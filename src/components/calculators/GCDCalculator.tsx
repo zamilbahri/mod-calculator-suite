@@ -163,7 +163,7 @@ const GCDCalculator: React.FC = () => {
                   )
                 </span>
               }
-              value={x}
+              value={x.toString()}
             />
             <CopyableCodeBlock
               label={
@@ -172,7 +172,7 @@ const GCDCalculator: React.FC = () => {
                   )
                 </span>
               }
-              value={y}
+              value={y.toString()}
             />
           </div>
           <div className="p-4 rounded-lg bg-gray-900/40 border border-gray-700">
