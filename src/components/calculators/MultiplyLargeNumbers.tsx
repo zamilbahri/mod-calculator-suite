@@ -39,7 +39,7 @@ const MultiplyLargeNumbers: React.FC = () => {
       const P = parseBigIntStrict(p, 'p');
       const Q = parseBigIntStrict(q, 'q');
       if (P === 0n || Q === 0n) {
-        throw new Error('p and q must be at least 1 to compute (p−1)(q−1).');
+        throw new Error('p and q must be at least 1 to compute (p-1)(q-1).');
       }
       const phi = (P - 1n) * (Q - 1n);
       setResult(phi.toString());
@@ -74,7 +74,6 @@ const MultiplyLargeNumbers: React.FC = () => {
             // don’t clear result automatically; just invalidate errors
             setError('');
           }}
-          placeholder="Digits only"
           maxLength={1000}
         />
 
@@ -85,7 +84,6 @@ const MultiplyLargeNumbers: React.FC = () => {
             setQ(val);
             setError('');
           }}
-          placeholder="Digits only"
           maxLength={1000}
         />
       </div>
