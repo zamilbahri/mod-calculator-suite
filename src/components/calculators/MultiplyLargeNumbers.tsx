@@ -90,7 +90,7 @@ const MultiplyLargeNumbers: React.FC = () => {
         />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3 pb-1">
         <button
           type="button"
           onClick={computeProduct}

@@ -116,7 +116,7 @@ const FastExponentiation: React.FC = () => {
         />
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-4 flex items-center gap-3 pb-1">
         <button
           type="button"
           onClick={compute}
