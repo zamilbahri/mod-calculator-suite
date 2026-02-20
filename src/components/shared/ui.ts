@@ -1,4 +1,4 @@
-export const labelClass = 'block text-sm mb-2 text-purple-300';
+export const labelClass = 'block text-md text-purple-300';
 
 export const inputClass =
   'w-full px-3 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white outline-none focus:ring-2 focus:ring-purple-500/60';
