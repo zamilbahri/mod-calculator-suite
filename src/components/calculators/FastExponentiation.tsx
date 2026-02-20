@@ -3,8 +3,6 @@ import MathText from '../shared/MathText';
 import CopyableCodeBlock from '../shared/CopyableCodeBlock';
 import {
   errorBoxClass,
-  inputClass,
-  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
 } from '../shared/ui';
@@ -13,6 +11,7 @@ import {
   parseBigIntStrict,
   isNonNegativeIntegerString,
 } from '../../utils/numberTheory';
+import NumericInput from '../shared/NumericInput';
 
 const BASE_URL = 'https://zamilbahri.github.io/fast-exponentiation';
 
@@ -83,47 +82,23 @@ const FastExponentiation: React.FC = () => {
   return (
     <div>
       <div className="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label className={labelClass}>
-            <MathText>a</MathText>
-          </label>
-          <input
-            value={a}
-            onChange={(e) => setA(e.target.value)}
-            placeholder="Digits only"
-            className={inputClass}
-            inputMode="numeric"
-            spellCheck={false}
-          />
-        </div>
+        <NumericInput
+          label={<MathText>a</MathText>}
+          value={a}
+          onChange={setA}
+        />
 
-        <div>
-          <label className={labelClass}>
-            <MathText>n</MathText>
-          </label>
-          <input
-            value={n}
-            onChange={(e) => setN(e.target.value)}
-            placeholder="Digits only"
-            className={inputClass}
-            inputMode="numeric"
-            spellCheck={false}
-          />
-        </div>
+        <NumericInput
+          label={<MathText>n</MathText>}
+          value={n}
+          onChange={setN}
+        />
 
-        <div>
-          <label className={labelClass}>
-            <MathText>m</MathText>
-          </label>
-          <input
-            value={m}
-            onChange={(e) => setM(e.target.value)}
-            placeholder="Digits only"
-            className={inputClass}
-            inputMode="numeric"
-            spellCheck={false}
-          />
-        </div>
+        <NumericInput
+          label={<MathText>m</MathText>}
+          value={m}
+          onChange={setM}
+        />
       </div>
 
       <div className="mt-4 flex items-center gap-3">

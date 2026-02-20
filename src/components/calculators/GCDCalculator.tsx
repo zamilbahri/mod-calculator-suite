@@ -3,12 +3,11 @@ import MathText from '../shared/MathText';
 import CopyableCodeBlock from '../shared/CopyableCodeBlock';
 import {
   errorBoxClass,
-  inputClass,
-  labelClass,
   primaryButtonClass,
   secondaryButtonClass,
 } from '../shared/ui';
 import { extendedGCD, parseBigIntStrict } from '../../utils/numberTheory';
+import NumericInput from '../shared/NumericInput';
 
 const GCDCalculator: React.FC = () => {
   const [a, setA] = useState('');
@@ -58,7 +57,7 @@ const GCDCalculator: React.FC = () => {
   return (
     <div>
       <div className="grid sm:grid-cols-2 gap-4">
-        <div>
+        {/* <div>
           <label className={labelClass}>
             <MathText>a</MathText>
           </label>
@@ -89,7 +88,23 @@ const GCDCalculator: React.FC = () => {
             inputMode="numeric"
             spellCheck={false}
           />
-        </div>
+        </div> */}
+        <NumericInput
+          label={<MathText>a</MathText>}
+          value={a}
+          onChange={(val) => {
+            setA(val);
+            setComputed(false);
+          }}
+        />
+        <NumericInput
+          label={<MathText>b</MathText>}
+          value={b}
+          onChange={(val) => {
+            setB(val);
+            setComputed(false);
+          }}
+        />
       </div>
       <div className="mt-4 flex items-center gap-3">
         <button
