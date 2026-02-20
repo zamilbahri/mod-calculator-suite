@@ -30,7 +30,7 @@ const App: React.FC = () => {
           </CalculatorCard>
 
           <CalculatorCard
-            title="GCD Calculator"
+            title="EGCD and Modular Inverse Calculator"
             subtitle={
               <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
                 <span>Compute</span>
