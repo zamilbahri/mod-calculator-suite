@@ -1,5 +1,10 @@
 import React, { useMemo, useState } from 'react';
 
+const copyButtonClass = [
+  'text-xs px-3 py-1 rounded-md bg-gray-700 border',
+  'border-gray-600 hover:bg-gray-600 disabled:opacity-50',
+].join(' ');
+
 export interface CopyableCodeBlockProps {
   value: string;
   label?: React.ReactNode;
@@ -41,7 +46,7 @@ const CopyableCodeBlock: React.FC<CopyableCodeBlockProps> = ({
         type="button"
         onClick={onCopy}
         disabled={!canCopy}
-        className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-650 disabled:opacity-50"
+        className={copyButtonClass}
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
