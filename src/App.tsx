@@ -18,7 +18,9 @@ const App: React.FC = () => {
             subtitle={
               <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
                 <span>Compute</span>
-                <MathText className="text-purple-200">{'p \\cdot q'}</MathText>
+                <MathText className="text-purple-200">
+                  {'n = p \\cdot q'}
+                </MathText>
                 <span>where</span>
                 <MathText className="text-purple-200">{'p, q'}</MathText>
                 <span>are large integers (hundreds of digits or more).</span>
@@ -34,14 +36,20 @@ const App: React.FC = () => {
             subtitle={
               <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
                 <span>Compute</span>
-                <MathText className="text-purple-200">{'\\gcd(a, b)'}</MathText>
-                <span>and coefficients</span>
+                <MathText className="text-purple-200">
+                  {'\\gcd(a, b),'}
+                </MathText>
+                <span>coefficients</span>
                 <MathText className="text-purple-200">{'x, y'}</MathText>
                 <span>such that</span>
                 <MathText className="text-purple-200">
-                  {'ax + by = \\gcd(a, b)'}
+                  {'ax + by = \\gcd(a, b),'}
                 </MathText>
-                <span> using the Extended Euclidean Algorithm.</span>
+                <span>and</span>
+                <MathText className="text-purple-200">
+                  {'a^{-1} \\bmod b'}
+                </MathText>
+                .
               </span>
             }
           >
