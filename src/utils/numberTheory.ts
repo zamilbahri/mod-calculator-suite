@@ -11,7 +11,7 @@ export function isNonNegativeIntegerString(s: string): boolean {
 export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
   const s = input.trim();
   if (!isNonNegativeIntegerString(s)) {
-    throw new Error(`${fieldName} must be a positive integer.`);
+    throw new Error(`${fieldName} must be a non-negative integer.`);
   }
   return BigInt(s);
 }
