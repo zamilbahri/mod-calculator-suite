@@ -54,7 +54,7 @@ const App: React.FC = () => {
               <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
                 <span>Compute</span>
                 <MathText className="text-purple-200">{'a^n \\mod m'}</MathText>
-                <span>using square-and-multiply (BigInt).</span>
+                <span>using fast exponentiation (square-and-multiply).</span>
               </span>
             }
           >
