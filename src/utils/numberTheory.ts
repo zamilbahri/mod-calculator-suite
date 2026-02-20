@@ -21,6 +21,12 @@ export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
   return BigInt(s);
 }
 
+export function modNormalize(x: bigint, m: bigint): bigint {
+  // assumes m > 0
+  const r = x % m;
+  return r >= 0n ? r : r + m;
+}
+
 export function gcd(a: bigint, b: bigint): bigint {
   let x = a < 0n ? -a : a;
   let y = b < 0n ? -b : b;

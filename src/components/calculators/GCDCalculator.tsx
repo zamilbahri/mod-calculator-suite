@@ -6,14 +6,12 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from '../shared/ui';
-import { extendedGCD, parseBigIntStrict } from '../../utils/numberTheory';
+import {
+  extendedGCD,
+  parseBigIntStrict,
+  modNormalize,
+} from '../../utils/numberTheory';
 import NumericInput from '../shared/NumericInput';
-
-function modNormalize(x: bigint, m: bigint): bigint {
-  // assumes m > 0
-  const r = x % m;
-  return r >= 0n ? r : r + m;
-}
 
 const GCDCalculator: React.FC = () => {
   const [a, setA] = useState('');
@@ -63,6 +61,7 @@ const GCDCalculator: React.FC = () => {
     }
 
     const invVal = modNormalize(coeff, mod);
+
     return {
       ok: true as const,
       inv: invVal,
