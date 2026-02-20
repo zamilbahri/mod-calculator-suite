@@ -112,6 +112,7 @@ const GCDCalculator: React.FC = () => {
             setA(val);
             setComputed(false);
           }}
+          onEnter={compute}
         />
         <NumericInput
           label={<MathText>b</MathText>}
@@ -120,6 +121,7 @@ const GCDCalculator: React.FC = () => {
             setB(val);
             setComputed(false);
           }}
+          onEnter={compute}
         />
       </div>
       <div className="mt-4 flex items-center gap-3">

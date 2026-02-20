@@ -74,6 +74,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             // don’t clear result automatically; just invalidate errors
             setError('');
           }}
+          onEnter={computeProduct}
           maxLength={1000}
         />
 
@@ -84,6 +85,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             setQ(val);
             setError('');
           }}
+          onEnter={computeProduct}
           maxLength={1000}
         />
       </div>

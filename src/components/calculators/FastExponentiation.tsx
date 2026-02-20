@@ -92,6 +92,7 @@ const FastExponentiation: React.FC = () => {
             setA(val);
             setComputed(false);
           }}
+          onEnter={compute}
         />
 
         <NumericInput
@@ -101,6 +102,7 @@ const FastExponentiation: React.FC = () => {
             setN(val);
             setComputed(false);
           }}
+          onEnter={compute}
         />
 
         <NumericInput
@@ -110,6 +112,7 @@ const FastExponentiation: React.FC = () => {
             setM(val);
             setComputed(false);
           }}
+          onEnter={compute}
         />
       </div>
 

@@ -16,6 +16,7 @@ interface NumericInputProps {
   label: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
+  onEnter?: () => void;
   placeholder?: string;
   maxLength?: number;
 }
@@ -24,6 +25,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   label,
   value,
   onChange,
+  onEnter,
   placeholder = 'Enter a non-negative integer',
   maxLength = 2000,
 }) => {
@@ -58,6 +60,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
           type="button"
           onClick={onCopy}
           disabled={!canCopy || !value}
+          tabIndex={-1}
           className={copyButtonClass}
         >
           {copied ? 'Copied!' : 'Copy'}
@@ -68,6 +71,12 @@ const NumericInput: React.FC<NumericInputProps> = ({
         onChange={(e) => {
           const v = e.target.value;
           if (v === '' || /^\d+$/.test(v)) onChange(v);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onEnter?.();
+          }
         }}
         placeholder={placeholder}
         className={textAreaClass}
