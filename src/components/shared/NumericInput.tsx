@@ -38,7 +38,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
           type="button"
           onClick={onCopy}
           disabled={!canCopy || !value}
-          className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-650 disabled:opacity-50"
+          className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600 disabled:opacity-50"
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>
