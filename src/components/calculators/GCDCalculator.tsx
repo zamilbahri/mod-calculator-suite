@@ -130,7 +130,7 @@ const GCDCalculator: React.FC = () => {
           disabled={working}
           className={primaryButtonClass}
         >
-          {working ? 'Computing…' : 'Compute GCD'}
+          {working ? 'Computing…' : 'Compute'}
         </button>
         <button type="button" onClick={clear} className={secondaryButtonClass}>
           Clear
@@ -189,24 +189,14 @@ const GCDCalculator: React.FC = () => {
               >
                 {swapInv ? (
                   <span>
-                    Show <MathText>{`a^{-1} \\bmod b`}</MathText>
+                    Show <MathText>{`a^{-1} \\bmod b`}</MathText> instead
                   </span>
                 ) : (
                   <span>
-                    Show <MathText>{`b^{-1} \\bmod a`}</MathText>
+                    Show <MathText>{`b^{-1} \\bmod a`}</MathText> instead
                   </span>
                 )}
               </button>
-            </div>
-
-            <div className="mt-1 text-xs text-gray-300">
-              Currently displaying{' '}
-              {swapInv ? (
-                <MathText>{`b^{-1} \\bmod a`}</MathText>
-              ) : (
-                <MathText>{`a^{-1} \\bmod b`}</MathText>
-              )}
-              .
             </div>
 
             {!invInfo ? null : invInfo.ok ? (
@@ -216,7 +206,14 @@ const GCDCalculator: React.FC = () => {
                 </MathText>
 
                 <CopyableCodeBlock
-                  label={swapInv ? 'b^{-1} mod a' : 'a^{-1} mod b'}
+                  // label={swapInv ? 'b^{-1} mod a' : 'a^{-1} mod b'}
+                  label={
+                    swapInv ? (
+                      <MathText>{`b^{-1} \\bmod a`}</MathText>
+                    ) : (
+                      <MathText>{`a^{-1} \\bmod b`}</MathText>
+                    )
+                  }
                   value={invInfo.inv.toString()}
                 />
               </div>
