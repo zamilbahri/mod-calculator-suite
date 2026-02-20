@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import MathText from '../shared/MathText';
-import CopyableCodeBlock from '../shared/CopyableCodeBlock';
+import CopyableCodeBlock from '../shared/NumericOutput';
 import NumericInput from '../shared/NumericInput';
 import {
   errorBoxClass,
