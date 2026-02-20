@@ -1,6 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import { labelClass } from './ui';
 
+const textAreaClass = [
+  'w-full px-3 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white',
+  'outline-none focus:ring-2 focus:ring-purple-500/60 resize-none',
+  'overflow-y-auto placeholder:text-gray-500',
+].join(' ');
+
+const copyButtonClass = [
+  'text-xs px-3 py-1 rounded-md bg-gray-700 border',
+  'border-gray-600 hover:bg-gray-600 disabled:opacity-50',
+].join(' ');
+
 interface NumericInputProps {
   label: React.ReactNode;
   value: string;
@@ -47,7 +58,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
           type="button"
           onClick={onCopy}
           disabled={!canCopy || !value}
-          className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600 disabled:opacity-50"
+          className={copyButtonClass}
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>
@@ -59,7 +70,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
           if (v === '' || /^\d+$/.test(v)) onChange(v);
         }}
         placeholder={placeholder}
-        className="w-full px-3 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white outline-none focus:ring-2 focus:ring-purple-500/60 resize-none overflow-y-auto"
+        className={textAreaClass}
         inputMode="numeric"
         spellCheck={false}
         rows={4}
