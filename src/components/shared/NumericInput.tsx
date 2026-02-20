@@ -12,7 +12,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   label,
   value,
   onChange,
-  placeholder = 'Enter an integer',
+  placeholder = 'Enter a non-negative integer',
 }) => {
   const [copied, setCopied] = useState(false);
   const canCopy = useMemo(
@@ -45,7 +45,10 @@ const NumericInput: React.FC<NumericInputProps> = ({
       </div>
       <textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === '' || /^\d+$/.test(v)) onChange(v);
+        }}
         placeholder={placeholder}
         className="w-full px-3 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white outline-none focus:ring-2 focus:ring-purple-500/60 resize-none overflow-y-auto"
         inputMode="numeric"
