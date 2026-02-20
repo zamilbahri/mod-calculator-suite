@@ -68,7 +68,7 @@ const CalculatorCard: React.FC<CalculatorCardProps> = ({
     >
       <button
         type="button"
-        className="w-full text-left flex items-start gap-3"
+        className="w-full text-left flex items-start gap-3 group"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
@@ -77,11 +77,13 @@ const CalculatorCard: React.FC<CalculatorCardProps> = ({
         </div>
 
         <div className="flex-1">
-          <h2 className="text-lg sm:text-xl font-semibold text-purple-200">
+          <h2 className="text-lg sm:text-xl font-semibold text-purple-200 group-hover:text-purple-100">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-1 text-sm text-gray-300">{subtitle}</p>
+            <p className="mt-1 text-sm text-gray-300 group-hover:text-gray-200">
+              {subtitle}
+            </p>
           ) : null}
         </div>
       </button>
