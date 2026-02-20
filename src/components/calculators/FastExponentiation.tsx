@@ -41,6 +41,7 @@ const FastExponentiation: React.FC = () => {
   const [m, setM] = useState('');
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [computed, setComputed] = useState(false);
   const [working, setWorking] = useState(false);
 
   const learnMoreUrl = useMemo(() => buildLearnMoreUrl(a, n, m), [a, n, m]);
@@ -49,6 +50,7 @@ const FastExponentiation: React.FC = () => {
     setError('');
     setResult('');
     setWorking(true);
+    setComputed(true);
 
     try {
       // Yield so the UI can show "Computing…"
@@ -75,9 +77,10 @@ const FastExponentiation: React.FC = () => {
     setM('');
     setResult('');
     setError('');
+    setComputed(false);
   };
 
-  const hasResult = result !== '';
+  const hasResult = computed && result !== '';
 
   return (
     <div>
@@ -85,19 +88,28 @@ const FastExponentiation: React.FC = () => {
         <NumericInput
           label={<MathText>a</MathText>}
           value={a}
-          onChange={setA}
+          onChange={(val) => {
+            setA(val);
+            setComputed(false);
+          }}
         />
 
         <NumericInput
           label={<MathText>n</MathText>}
           value={n}
-          onChange={setN}
+          onChange={(val) => {
+            setN(val);
+            setComputed(false);
+          }}
         />
 
         <NumericInput
           label={<MathText>m</MathText>}
           value={m}
-          onChange={setM}
+          onChange={(val) => {
+            setM(val);
+            setComputed(false);
+          }}
         />
       </div>
 
