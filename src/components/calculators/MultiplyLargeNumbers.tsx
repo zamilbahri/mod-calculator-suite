@@ -75,6 +75,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             setError('');
           }}
           placeholder="Digits only"
+          maxLength={1000}
         />
 
         <NumericInput
@@ -85,6 +86,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             setError('');
           }}
           placeholder="Digits only"
+          maxLength={1000}
         />
       </div>
 

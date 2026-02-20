@@ -6,6 +6,7 @@ interface NumericInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  maxLength?: number;
 }
 
 const NumericInput: React.FC<NumericInputProps> = ({
@@ -13,6 +14,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   value,
   onChange,
   placeholder = 'Enter a non-negative integer',
+  maxLength = 2000,
 }) => {
   const [copied, setCopied] = useState(false);
   const canCopy = useMemo(
@@ -33,7 +35,14 @@ const NumericInput: React.FC<NumericInputProps> = ({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <label className={labelClass}>{label}</label>
+        <div className="flex items-baseline gap-2">
+          <label className={labelClass}>{label}</label>
+          {value && (
+            <span className="text-xs text-gray-500">
+              {value.length}/{maxLength} digits
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={onCopy}
@@ -54,6 +63,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
         inputMode="numeric"
         spellCheck={false}
         rows={4}
+        maxLength={maxLength}
       />
     </div>
   );
