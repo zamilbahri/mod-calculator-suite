@@ -1,0 +1,14 @@
+{
+  "entryPoints": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/components",
+    "src/types",
+    "src/utils"
+  ],
+  "entryPointStrategy": "expand",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "docs",
+  "includeVersion": true,
+  "readme": "README.md"
+}
