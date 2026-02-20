@@ -24,25 +24,52 @@ const GCDCalculator: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [working, setWorking] = useState(false);
   const [computed, setComputed] = useState(false);
+  const [swapInv, setSwapInv] = useState(false);
 
-  const inv = useMemo(() => {
-    if (!computed || g === null || x === null) return null;
+  const invInfo = useMemo(() => {
+    if (!computed || g === null || x === null || y === null) return null;
 
-    // interpret b as modulus for inverse output
-    const B = (() => {
-      try {
-        return parseBigIntStrict(b, 'b');
-      } catch {
-        return null;
-      }
-    })();
-    if (B === null) return null;
+    let A: bigint;
+    let B: bigint;
+    try {
+      A = parseBigIntStrict(a, 'a');
+      B = parseBigIntStrict(b, 'b');
+    } catch {
+      return null;
+    }
 
-    if (B < 2n) return null;
-    if (g !== 1n) return null;
+    const baseStr = swapInv ? b.trim() : a.trim(); // whose inverse?
+    const modStr = swapInv ? a.trim() : b.trim(); // modulus?
 
-    return modNormalize(x, B);
-  }, [computed, g, x, b]);
+    const mod = swapInv ? A : B;
+    const coeff = swapInv ? y : x; // y gives b^{-1} mod a, x gives a^{-1} mod b
+
+    if (mod < 2n) {
+      return {
+        ok: false as const,
+        reason: 'Modulus must be at least 2 to define a modular inverse.',
+        baseStr,
+        modStr,
+      };
+    }
+
+    if (g !== 1n) {
+      return {
+        ok: false as const,
+        reason: 'No inverse: gcd(a,b) ≠ 1.',
+        baseStr,
+        modStr,
+      };
+    }
+
+    const invVal = modNormalize(coeff, mod);
+    return {
+      ok: true as const,
+      inv: invVal,
+      baseStr,
+      modStr,
+    };
+  }, [computed, g, x, y, a, b, swapInv]);
 
   const compute = async () => {
     setError('');
@@ -149,41 +176,53 @@ const GCDCalculator: React.FC = () => {
             />
           </div>
           <div className="p-4 rounded-lg bg-gray-900/40 border border-gray-700">
-            <div className="text-sm text-purple-200 font-semibold">
-              Modular inverse (treating b as modulus)
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-purple-200 font-semibold">
+                Modular inverse
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSwapInv((v) => !v)}
+                className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600"
+                title="Swap which value is inverted and which is the modulus"
+              >
+                {swapInv ? (
+                  <span>
+                    Show <MathText>{`a^{-1} \\bmod b`}</MathText>
+                  </span>
+                ) : (
+                  <span>
+                    Show <MathText>{`b^{-1} \\bmod a`}</MathText>
+                  </span>
+                )}
+              </button>
             </div>
-            {(() => {
-              const B = BigInt(b.trim() || '0');
-              if (B < 2n) {
-                return (
-                  <div className="mt-2 text-sm text-gray-300">
-                    Modulus must be at least 2 to define a modular inverse.
-                  </div>
-                );
-              }
-              if (g !== 1n) {
-                return (
-                  <div className="mt-2 text-sm text-gray-300">
-                    No inverse:{' '}
-                    <MathText className="text-purple-200">
-                      {'\\gcd(a,b) \\neq 1'}
-                    </MathText>
-                    .
-                  </div>
-                );
-              }
-              return (
-                <div className="mt-2 space-y-3">
-                  <MathText block className="block text-sm text-gray-200">
-                    {`${a.trim()}^{-1} \\equiv ${inv!.toString()} \\pmod{${b.trim()}}`}
-                  </MathText>
-                  <CopyableCodeBlock
-                    label={<MathText>{`a^{-1} \\bmod b`}</MathText>}
-                    value={inv!.toString()}
-                  />
-                </div>
-              );
-            })()}
+
+            <div className="mt-1 text-xs text-gray-300">
+              Currently displaying{' '}
+              {swapInv ? (
+                <MathText>{`b^{-1} \\bmod a`}</MathText>
+              ) : (
+                <MathText>{`a^{-1} \\bmod b`}</MathText>
+              )}
+              .
+            </div>
+
+            {!invInfo ? null : invInfo.ok ? (
+              <div className="mt-3 space-y-3">
+                <MathText block className="block text-sm text-gray-200">
+                  {`${invInfo.baseStr}^{-1} \\equiv ${invInfo.inv.toString()} \\pmod{${invInfo.modStr}}`}
+                </MathText>
+
+                <CopyableCodeBlock
+                  label={swapInv ? 'b^{-1} mod a' : 'a^{-1} mod b'}
+                  value={invInfo.inv.toString()}
+                />
+              </div>
+            ) : (
+              <div className="mt-3 text-sm text-gray-300">{invInfo.reason}</div>
+            )}
           </div>
         </div>
       ) : null}
