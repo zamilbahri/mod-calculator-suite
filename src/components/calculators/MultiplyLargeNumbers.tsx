@@ -1,93 +1,121 @@
 import React, { useState } from 'react';
-import CopyableCodeBlock from '../shared/CopyableCodeBlock';
-import { parseBigIntStrict } from '../../utils/numberTheory';
 import MathText from '../shared/MathText';
-import { primaryButtonClass, secondaryButtonClass } from '../shared/ui';
+import CopyableCodeBlock from '../shared/CopyableCodeBlock';
 import NumericInput from '../shared/NumericInput';
+import {
+  errorBoxClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from '../shared/ui';
+import { parseBigIntStrict } from '../../utils/numberTheory';
+
+type Mode = 'product' | 'phi';
 
 const MultiplyLargeNumbers: React.FC = () => {
   const [p, setP] = useState('');
   const [q, setQ] = useState('');
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState<string>('');
-  const [working, setWorking] = useState(false);
+  const [mode, setMode] = useState<Mode>('product');
 
-  const compute = async () => {
+  const computeProduct = () => {
     setError('');
     setResult('');
-    setWorking(true);
-
+    setMode('product');
     try {
-      // Yield once so UI can show "Computing..."
-      await new Promise((r) => setTimeout(r, 0));
-
       const P = parseBigIntStrict(p, 'p');
       const Q = parseBigIntStrict(q, 'q');
-
-      const R = (P * Q).toString();
-      setResult(R);
+      setResult((P * Q).toString());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid input.');
-    } finally {
-      setWorking(false);
     }
   };
+
+  const computePhi = () => {
+    setError('');
+    setResult('');
+    setMode('phi');
+    try {
+      const P = parseBigIntStrict(p, 'p');
+      const Q = parseBigIntStrict(q, 'q');
+      if (P === 0n || Q === 0n) {
+        throw new Error('p and q must be at least 1 to compute (p−1)(q−1).');
+      }
+      const phi = (P - 1n) * (Q - 1n);
+      setResult(phi.toString());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Invalid input.');
+    }
+  };
+
+  const clear = () => {
+    setP('');
+    setQ('');
+    setResult('');
+    setError('');
+    setMode('product');
+  };
+
+  const outputLabel =
+    mode === 'phi' ? (
+      <MathText>{`\\phi = (p-1)\\cdot(q-1)`}</MathText>
+    ) : (
+      <MathText>{`n = p\\cdot q`}</MathText>
+    );
 
   return (
     <div>
       <div className="grid sm:grid-cols-2 gap-4">
         <NumericInput
-          label={<MathText>p</MathText>}
+          label={<MathText>{'p'}</MathText>}
           value={p}
-          onChange={setP}
+          onChange={(val) => {
+            setP(val);
+            // don’t clear result automatically; just invalidate errors
+            setError('');
+          }}
+          placeholder="Digits only"
         />
+
         <NumericInput
-          label={<MathText>q</MathText>}
+          label={<MathText>{'q'}</MathText>}
           value={q}
-          onChange={setQ}
+          onChange={(val) => {
+            setQ(val);
+            setError('');
+          }}
+          placeholder="Digits only"
         />
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          onClick={compute}
-          disabled={working}
+          onClick={computeProduct}
           className={primaryButtonClass}
         >
-          {working ? 'Computing…' : 'Multiply'}
+          Multiply
         </button>
 
         <button
           type="button"
-          onClick={() => {
-            setP('');
-            setQ('');
-            setResult('');
-            setError('');
-          }}
+          onClick={computePhi}
           className={secondaryButtonClass}
+          title="Compute ϕ = (p-1)(q-1)"
         >
+          <MathText>{'\\phi = (p-1)\\cdot(q-1)'}</MathText>
+        </button>
+
+        <button type="button" onClick={clear} className={secondaryButtonClass}>
           Clear
         </button>
       </div>
 
-      {error ? (
-        <div className="mt-4 p-3 rounded-lg border border-red-500/40 bg-red-900/20 text-red-200">
-          {error}
-        </div>
-      ) : null}
+      {error ? <div className={errorBoxClass}>{error}</div> : null}
 
       {result ? (
         <div className="mt-6">
-          <CopyableCodeBlock
-            label={
-              <span>
-                Result <MathText>p \times q</MathText>
-              </span>
-            }
-            value={result}
-          />
+          <CopyableCodeBlock label={outputLabel} value={result} />
         </div>
       ) : null}
     </div>
