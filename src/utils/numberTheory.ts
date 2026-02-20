@@ -4,12 +4,8 @@ export interface EGCDResult {
   y: bigint;
 }
 
-/**
- * Integers only (per your spec).
- * Default: non-negative decimal digits only.
- */
 export function isNonNegativeIntegerString(s: string): boolean {
-  return /^\d+$/.test(s.trim());
+  return /^\d+$/.test(s);
 }
 
 export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
@@ -17,7 +13,6 @@ export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
   if (!isNonNegativeIntegerString(s)) {
     throw new Error(`${fieldName} must be a positive integer.`);
   }
-  // BigInt can parse arbitrarily large strings (memory permitting).
   return BigInt(s);
 }
 
