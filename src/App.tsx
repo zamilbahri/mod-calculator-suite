@@ -26,7 +26,6 @@ const App: React.FC = () => {
                 <span>are large integers (hundreds of digits or more).</span>
               </span>
             }
-            defaultOpen
           >
             <MultiplyLargeNumbers />
           </CalculatorCard>
