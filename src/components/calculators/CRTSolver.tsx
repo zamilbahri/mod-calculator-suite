@@ -1,7 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
 import NumericOutput from '../shared/NumericOutput';
-import { errorBoxClass, primaryButtonClass } from '../shared/ui';
+import {
+  errorBoxClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from '../shared/ui';
 import {
   arePairwiseCoprime,
   modInverse,
@@ -289,7 +293,15 @@ const CRTSolver: React.FC = () => {
           className={primaryButtonClass}
           title="Compute CRT solution (empty rows are ignored)"
         >
-          {working ? 'Computing…' : 'Solve CRT'}
+          {working ? 'Computing…' : 'Solve'}
+        </button>
+
+        <button
+          type="button"
+          onClick={onClear}
+          className={secondaryButtonClass}
+        >
+          Clear
         </button>
       </div>
 
