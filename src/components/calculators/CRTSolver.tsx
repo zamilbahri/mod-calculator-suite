@@ -10,6 +10,7 @@ import {
   arePairwiseCoprime,
   parseBigIntStrict,
   solveCRT,
+  MathValidationError,
 } from '../../utils/numberTheory';
 import type {
   CRTSolution,
@@ -21,11 +22,11 @@ import CRTInputPanel from './CRTInputPanel';
 const CRT_LEARN_MORE = 'https://zamilbahri.github.io/crt-solver';
 
 function validateEquations(eqs: CRTEquationDraft[]): {
-  errors: React.ReactNode[];
+  errors: MathValidationError[];
   isCoprime: boolean | null;
   parsed: CRTEquationParsed[] | null;
 } {
-  const errors: React.ReactNode[] = [];
+  const errors: MathValidationError[] = [];
 
   // Only consider "active" rows (not both empty)
   const active = eqs.filter(
@@ -45,13 +46,13 @@ function validateEquations(eqs: CRTEquationDraft[]): {
     const mStr = active[i].m.trim();
 
     // If partially filled, we can't assess coprime yet
-    if (aStr === '' || mStr === '') {
+    if (mStr === '') {
       ready = false;
       continue;
     }
 
     // Digits-only checks (usually redundant if NumericInput filters, but safe)
-    if (!/^\d+$/.test(aStr) || !/^\d+$/.test(mStr)) {
+    if (!/^\d+$/.test(mStr)) {
       ready = false;
       continue;
     }
@@ -61,11 +62,7 @@ function validateEquations(eqs: CRTEquationDraft[]): {
 
     if (m < 2n) {
       errors.push(
-        <span>
-          <MathText>{`m_${i + 1}`}</MathText>
-          {` must be at least `}
-          <MathText>2</MathText>.
-        </span>,
+        new MathValidationError(`m_${i + 1}`, 'must be at least', '2'),
       );
       continue;
     }
@@ -89,7 +86,7 @@ const CRTSolver: React.FC = () => {
   ]);
 
   const [working, setWorking] = useState(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<React.ReactNode>(null);
   const [solution, setSolution] = useState<CRTSolution | null>(null);
 
   const validation = useMemo(() => validateEquations(equations), [equations]);
@@ -210,24 +207,33 @@ const CRTSolver: React.FC = () => {
 
       // If everything was empty, force parseBigIntStrict to throw your standard message
       if (compact.length === 0) {
-        parseBigIntStrict('', 'a_1'); // throws: "a_1 must be a non-negative integer."
+        parseBigIntStrict('', 'a_1'); // throws: "a_1 cannot be empty."
       }
 
       // Parse only the compacted equations.
       // If any active row is missing a or m, parseBigIntStrict will throw the desired message.
       const parsed: CRTEquationParsed[] = compact.map((eq, i) => {
-        const a = parseBigIntStrict(eq.a, `a_${i + 1}`);
-        const m = parseBigIntStrict(eq.m, `m_${i + 1}`);
-        if (m < 2n) throw new Error(`m_${i + 1} must be at least 2.`);
+        const a = parseBigIntStrict(eq.a, `a_{${i + 1}}`);
+        const m = parseBigIntStrict(eq.m, `m_{${i + 1}}`);
+        if (m < 2n)
+          throw new MathValidationError(`m_{${i + 1}}`, 'must be at least 2.');
         return { a, m };
       });
 
       const crtResult = solveCRT(parsed);
       setSolution(crtResult);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Failed to compute CRT solution.',
-      );
+      if (e instanceof MathValidationError) {
+        setError(
+          <span>
+            <MathText>{e.fieldName}</MathText> {e.reason}
+          </span>,
+        );
+      } else if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError('Failed to compute CRT solution.');
+      }
     } finally {
       setWorking(false);
     }
@@ -255,7 +261,7 @@ const CRTSolver: React.FC = () => {
           onClick={compute}
           disabled={working}
           className={primaryButtonClass}
-          title="Compute CRT solution (empty rows are ignored)"
+          title="Compute CRT solution"
         >
           {working ? 'Computing…' : 'Solve'}
         </button>

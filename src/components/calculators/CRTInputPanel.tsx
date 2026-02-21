@@ -7,7 +7,10 @@ import {
   secondaryButtonClass,
   tertiaryButtonClass,
 } from '../shared/ui';
-import { isNonNegativeIntegerString } from '../../utils/numberTheory';
+import {
+  isNonNegativeIntegerString,
+  MathValidationError,
+} from '../../utils/numberTheory';
 
 import Chevron from '../shared/Chevron';
 import type { CRTEquationDraft } from '../../types';
@@ -20,7 +23,7 @@ export interface CRTInputPanelProps {
   onResetExample: () => void;
   onClear: () => void;
   onEnter?: () => void;
-  errors: React.ReactNode[];
+  errors: MathValidationError[];
   isCoprime: boolean | null; // null if inputs not ready to check
 }
 
@@ -188,7 +191,12 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
       ) : null}
 
       {errors.length > 0 ? (
-        <div className={errorBoxClass}>{errors[0]}</div>
+        <div className={errorBoxClass}>
+          {errors.map((e, i) => (
+            //TODO: display as MathText
+            <div key={i}>{e.message}</div>
+          ))}
+        </div>
       ) : null}
     </section>
   );
