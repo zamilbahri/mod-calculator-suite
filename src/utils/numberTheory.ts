@@ -1,14 +1,29 @@
 // numberTheory.ts - Common number theory utilities for the mod calculators.
 import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
 
+export class MathValidationError extends Error {
+  fieldName: string;
+  reason: string;
+
+  constructor(fieldName: string, reason: string) {
+    super(`${fieldName} ${reason}`); // Fallback for console logging
+    this.name = 'MathValidationError';
+    this.fieldName = fieldName;
+    this.reason = reason;
+  }
+}
+
 export function isNonNegativeIntegerString(s: string): boolean {
   return s === '' || /^\d+$/.test(s);
 }
 
 export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
   const s = input.trim();
+  if (s === '') {
+    throw new MathValidationError(fieldName, 'cannot be empty.');
+  }
   if (!isNonNegativeIntegerString(s)) {
-    throw new Error(`${fieldName} must be a non-negative integer.`);
+    throw new MathValidationError(fieldName, 'must be a non-negative integer.');
   }
   return BigInt(s);
 }
