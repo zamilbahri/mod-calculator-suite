@@ -4,12 +4,16 @@ import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
 export class MathValidationError extends Error {
   fieldName: string;
   reason: string;
+  expectedValue?: string;
 
-  constructor(fieldName: string, reason: string) {
-    super(`${fieldName} ${reason}`); // Fallback for console logging
+  constructor(fieldName: string, reason: string, expectedValue?: string) {
+    const valueSuffix = expectedValue !== undefined ? ` ${expectedValue}` : '';
+    super(`${fieldName} ${reason}${valueSuffix}`);
+
     this.name = 'MathValidationError';
     this.fieldName = fieldName;
     this.reason = reason;
+    this.expectedValue = expectedValue;
   }
 }
 
