@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
-import CopyableCodeBlock from '../shared/NumericOutput';
+import NumericOutput from '../shared/NumericOutput';
 import {
   errorBoxClass,
   primaryButtonClass,
@@ -152,12 +152,12 @@ const GCDCalculator: React.FC = () => {
               </MathText>
             </div>
           </div>
-          <CopyableCodeBlock
+          <NumericOutput
             label={<MathText>{`\\gcd(a,b)`}</MathText>}
             value={g.toString()}
           />
           <div className="grid sm:grid-cols-2 gap-4">
-            <CopyableCodeBlock
+            <NumericOutput
               label={
                 <span>
                   <MathText>x</MathText> (coefficient for <MathText>a</MathText>
@@ -166,7 +166,7 @@ const GCDCalculator: React.FC = () => {
               }
               value={x.toString()}
             />
-            <CopyableCodeBlock
+            <NumericOutput
               label={
                 <span>
                   <MathText>y</MathText> (coefficient for <MathText>b</MathText>
@@ -206,7 +206,7 @@ const GCDCalculator: React.FC = () => {
                   {`${invInfo.baseStr}^{-1} \\equiv ${invInfo.inv.toString()} \\pmod{${invInfo.modStr}}`}
                 </MathText>
 
-                <CopyableCodeBlock
+                <NumericOutput
                   // label={swapInv ? 'b^{-1} mod a' : 'a^{-1} mod b'}
                   label={
                     swapInv ? (

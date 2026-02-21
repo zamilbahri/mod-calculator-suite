@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import MathText from '../shared/MathText';
-import CopyableCodeBlock from '../shared/NumericOutput';
+import NumericOutput from '../shared/NumericOutput';
 import NumericInput from '../shared/NumericInput';
 import {
   errorBoxClass,
@@ -117,7 +117,7 @@ const MultiplyLargeNumbers: React.FC = () => {
 
       {result ? (
         <div className="mt-6">
-          <CopyableCodeBlock label={outputLabel} value={result} />
+          <NumericOutput label={outputLabel} value={result} />
         </div>
       ) : null}
     </div>

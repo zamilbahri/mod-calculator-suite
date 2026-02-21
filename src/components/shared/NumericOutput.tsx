@@ -1,13 +1,13 @@
 import { labelClass } from './ui';
 import CopyButton from './CopyButton';
 
-export interface CopyableCodeBlockProps {
+export interface NumericOutputProps {
   value: string;
   label?: React.ReactNode;
   className?: string;
 }
 
-const CopyableCodeBlock: React.FC<CopyableCodeBlockProps> = ({
+const NumericOutput: React.FC<NumericOutputProps> = ({
   value,
   label,
   className = '',
@@ -38,4 +38,4 @@ const CopyableCodeBlock: React.FC<CopyableCodeBlockProps> = ({
   );
 };
 
-export default CopyableCodeBlock;
+export default NumericOutput;

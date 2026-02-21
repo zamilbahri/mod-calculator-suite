@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
-import CopyableCodeBlock from '../shared/NumericOutput';
+import NumericOutput from '../shared/NumericOutput';
 import {
   errorBoxClass,
   primaryButtonClass,
@@ -150,7 +150,7 @@ const FastExponentiation: React.FC = () => {
             </MathText>
           </div>
 
-          <CopyableCodeBlock
+          <NumericOutput
             label={<MathText>{`a^n \\bmod m`}</MathText>}
             value={result}
           />
