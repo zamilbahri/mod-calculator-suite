@@ -53,9 +53,10 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
   return (
     <section>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        {/* placeholder to keep buttons right-aligned when title wraps */}
         <div></div>
         {''}
-        {/* placeholder to keep buttons right-aligned when title wraps */}
+
         <div className="flex flex-wrap items-center gap-3">
           {!canAdd && (
             <span className="italic text-sm text-gray-300 self-center mr-1">
