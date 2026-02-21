@@ -6,32 +6,26 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from '../shared/ui';
-import {
-  modPow,
-  parseBigIntStrict,
-  isNonNegativeIntegerString,
-} from '../../utils/numberTheory';
+import { modPow, parseBigIntStrict } from '../../utils/numberTheory';
 import NumericInput from '../shared/NumericInput';
 
 const BASE_URL = 'https://zamilbahri.github.io/fast-exponentiation';
 
 function buildLearnMoreUrl(a: string, n: string, m: string): string {
-  const A = a.trim();
-  const N = n.trim();
-  const M = m.trim();
+  const filled = a.length > 0 && n.length > 0 && m.length > 0;
 
-  const filled = A.length > 0 && N.length > 0 && M.length > 0;
-  const validDigits =
-    isNonNegativeIntegerString(A) &&
-    isNonNegativeIntegerString(N) &&
-    isNonNegativeIntegerString(M);
+  const maxIntegerSize = 2n ** 36n;
+  const tooLarge =
+    BigInt(a) >= maxIntegerSize ||
+    BigInt(n) >= maxIntegerSize ||
+    BigInt(m) >= maxIntegerSize;
 
-  if (!filled || !validDigits) return BASE_URL;
+  if (!filled || tooLarge) return BASE_URL;
 
   // Avoid linking to m=0 since mod is undefined; keep base URL in that case.
-  if (M === '0') return BASE_URL;
+  if (m === '0') return BASE_URL;
 
-  const params = new URLSearchParams({ a: A, n: N, m: M });
+  const params = new URLSearchParams({ a: a, n: n, m: m });
   return `${BASE_URL}?${params.toString()}`;
 }
 
