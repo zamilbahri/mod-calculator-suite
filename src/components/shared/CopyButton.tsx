@@ -1,9 +1,5 @@
 import React, { useMemo, useState } from 'react';
-
-const copyButtonClass = [
-  'text-xs px-3 py-1 rounded-md bg-gray-700 border',
-  'border-gray-600 hover:bg-gray-600 disabled:opacity-50',
-].join(' ');
+import { tertiaryButtonClass } from './ui';
 
 interface CopyButtonProps {
   value: string;
@@ -33,7 +29,7 @@ const CopyButton: React.FC<CopyButtonProps> = ({ value, tabIndex }) => {
       onClick={onCopy}
       disabled={!canCopy || !value}
       tabIndex={tabIndex}
-      className={copyButtonClass}
+      className={tertiaryButtonClass}
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
