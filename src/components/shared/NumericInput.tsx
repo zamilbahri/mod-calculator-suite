@@ -1,5 +1,6 @@
 import { labelClass } from './ui';
 import CopyButton from './CopyButton';
+import { isNonNegativeIntegerString } from '../../utils/numberTheory';
 
 const textAreaClass = [
   'w-full px-3 py-2 rounded-lg bg-gray-700 border border-gray-600 text-white',
@@ -41,7 +42,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
         value={value}
         onChange={(e) => {
           const v = e.target.value;
-          if (v === '' || /^\d+$/.test(v)) onChange(v);
+          if (isNonNegativeIntegerString(v)) onChange(v);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
