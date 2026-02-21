@@ -1,11 +1,8 @@
-export interface EGCDResult {
-  gcd: bigint;
-  x: bigint;
-  y: bigint;
-}
+// numberTheory.ts - Common number theory utilities for the mod calculators.
+import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
 
 export function isNonNegativeIntegerString(s: string): boolean {
-  return /^\d+$/.test(s);
+  return s === '' || /^\d+$/.test(s);
 }
 
 export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
@@ -111,4 +108,43 @@ export function modInverse(a: bigint, m: bigint): bigint {
   }
   // Ensure positive representative
   return ((x % mod) + mod) % mod;
+}
+
+/**
+ * Solves a system of congruences using the Chinese Remainder Theorem.
+ * Standard CRT requires all moduli to be pairwise coprime.
+ */
+export function solveCRT(equations: CRTEquationParsed[]): CRTSolution {
+  if (equations.length === 0) {
+    throw new Error('No equations provided.');
+  }
+
+  // Trivial case: single congruence
+  if (equations.length === 1) {
+    const { a, m } = equations[0];
+    return { x: modNormalize(a, m), M: m };
+  }
+
+  // Standard CRT requires pairwise coprime moduli
+  const moduli = equations.map((p) => p.m);
+  if (!arePairwiseCoprime(moduli)) {
+    throw new Error(
+      'Moduli must be pairwise coprime for the standard CRT solver.',
+    );
+  }
+
+  // Compute M = product of all moduli
+  let M = 1n;
+  for (const { m } of equations) M *= m;
+
+  // x = Sum( a_i * M_i * inv(M_i mod m_i) (mod M) )
+  let sum = 0n;
+  for (const { a, m } of equations) {
+    const Mi = M / m;
+    const inv = modInverse(Mi % m, m);
+    const ai = modNormalize(a, m);
+    sum += ai * Mi * inv;
+  }
+
+  return { x: modNormalize(sum, M), M };
 }

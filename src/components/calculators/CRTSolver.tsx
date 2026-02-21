@@ -8,27 +8,22 @@ import {
 } from '../shared/ui';
 import {
   arePairwiseCoprime,
-  modInverse,
   parseBigIntStrict,
+  solveCRT,
 } from '../../utils/numberTheory';
-import CRTInputPanel, { type EquationDraft } from './CRTInputPanel';
+import type {
+  CRTSolution,
+  CRTEquationParsed,
+  CRTEquationDraft,
+} from '../../types/index.ts';
+import CRTInputPanel from './CRTInputPanel';
 
 const CRT_LEARN_MORE = 'https://zamilbahri.github.io/crt-solver';
 
-function modNormalize(x: bigint, m: bigint): bigint {
-  const r = x % m;
-  return r >= 0n ? r : r + m;
-}
-
-interface ParsedEq {
-  a: bigint;
-  m: bigint;
-}
-
-function validateEquations(eqs: EquationDraft[]): {
+function validateEquations(eqs: CRTEquationDraft[]): {
   errors: React.ReactNode[];
   isCoprime: boolean | null;
-  parsed: ParsedEq[] | null;
+  parsed: CRTEquationParsed[] | null;
 } {
   const errors: React.ReactNode[] = [];
 
@@ -37,12 +32,12 @@ function validateEquations(eqs: EquationDraft[]): {
     (eq) => !(eq.a.trim() === '' && eq.m.trim() === ''),
   );
 
-  // No active equations → not ready to check coprimality
+  // No active equations -> not ready to check coprimality
   if (active.length === 0) {
     return { errors: [], isCoprime: null, parsed: null };
   }
 
-  const parsed: ParsedEq[] = [];
+  const parsed: CRTEquationParsed[] = [];
   let ready = true;
 
   for (let i = 0; i < active.length; i++) {
@@ -87,7 +82,7 @@ function validateEquations(eqs: EquationDraft[]): {
 }
 
 const CRTSolver: React.FC = () => {
-  const [equations, setEquations] = useState<EquationDraft[]>([
+  const [equations, setEquations] = useState<CRTEquationDraft[]>([
     { a: '', m: '' },
     { a: '', m: '' },
     { a: '', m: '' },
@@ -95,9 +90,7 @@ const CRTSolver: React.FC = () => {
 
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string>('');
-  const [solution, setSolution] = useState<{ x: bigint; M: bigint } | null>(
-    null,
-  );
+  const [solution, setSolution] = useState<CRTSolution | null>(null);
 
   const validation = useMemo(() => validateEquations(equations), [equations]);
 
@@ -222,44 +215,15 @@ const CRTSolver: React.FC = () => {
 
       // Parse only the compacted equations.
       // If any active row is missing a or m, parseBigIntStrict will throw the desired message.
-      const parsed: ParsedEq[] = compact.map((eq, i) => {
+      const parsed: CRTEquationParsed[] = compact.map((eq, i) => {
         const a = parseBigIntStrict(eq.a, `a_${i + 1}`);
         const m = parseBigIntStrict(eq.m, `m_${i + 1}`);
         if (m < 2n) throw new Error(`m_${i + 1} must be at least 2.`);
         return { a, m };
       });
 
-      // Trivial case: single congruence
-      if (parsed.length === 1) {
-        const { a, m } = parsed[0];
-        const x = modNormalize(a, m);
-        setSolution({ x, M: m });
-        return;
-      }
-
-      // Standard CRT requires pairwise coprime moduli
-      const moduli = parsed.map((p) => p.m);
-      if (!arePairwiseCoprime(moduli)) {
-        throw new Error(
-          'Moduli must be pairwise coprime for the standard CRT solver.',
-        );
-      }
-
-      // Compute M = product of moduli
-      let M = 1n;
-      for (const { m } of parsed) M *= m;
-
-      // x = Sum( a_i * M_i * inv(M_i mod m_i) (mod M) )
-      let sum = 0n;
-      for (const { a, m } of parsed) {
-        const Mi = M / m;
-        const inv = modInverse(Mi % m, m);
-        const ai = modNormalize(a, m);
-        sum += ai * Mi * inv;
-      }
-
-      const x = modNormalize(sum, M);
-      setSolution({ x, M });
+      const crtResult = solveCRT(parsed);
+      setSolution(crtResult);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : 'Failed to compute CRT solution.',

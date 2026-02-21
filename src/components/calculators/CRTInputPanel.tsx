@@ -8,14 +8,12 @@ import {
   tertiaryButtonClass,
 } from '../shared/ui';
 import { isNonNegativeIntegerString } from '../../utils/numberTheory';
-export interface EquationDraft {
-  a: string;
-  m: string;
-}
+
 import Chevron from '../shared/Chevron';
+import type { CRTEquationDraft } from '../../types';
 
 export interface CRTInputPanelProps {
-  equations: EquationDraft[];
+  equations: CRTEquationDraft[];
   onChange: (index: number, field: 'a' | 'm', value: string) => void;
   onAdd: () => void;
   onRemove: () => void;
@@ -31,7 +29,6 @@ const MIN_EQUATIONS = 1;
 
 function acceptDigitsOnly(next: string): string | null {
   const v = next.trim();
-  if (v === '') return '';
   return isNonNegativeIntegerString(v) ? v : null;
 }
 
