@@ -5,6 +5,7 @@ import MultiplyLargeNumbers from './components/calculators/MultiplyLargeNumbers'
 import MathText from './components/shared/MathText';
 import GCDCalculator from './components/calculators/GCDCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
+import CRTSolver from './components/calculators/CRTSolver';
 
 const App: React.FC = () => {
   return (
@@ -66,6 +67,19 @@ const App: React.FC = () => {
             }
           >
             <FastExponentiation />
+          </CalculatorCard>
+
+          <CalculatorCard
+            title="CRT Solver"
+            subtitle={
+              <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                <span>Solve</span>
+                <MathText className="text-purple-200">{String.raw`x \equiv a_i \pmod{m_i}`}</MathText>
+                <span>for multiple congruences (pairwise coprime moduli).</span>
+              </span>
+            }
+          >
+            <CRTSolver />
           </CalculatorCard>
         </div>
       </div>
