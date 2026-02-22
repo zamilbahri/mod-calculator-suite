@@ -11,6 +11,7 @@ import {
   solveCRT,
   MathValidationError,
   gcd,
+  isNonNegativeIntegerString,
 } from '../../utils/numberTheory';
 import type {
   CRTSolution,
@@ -20,7 +21,50 @@ import type {
 import CRTInputPanel from './CRTInputPanel';
 import { MathErrorView } from '../shared/MathErrorView.tsx';
 
-const CRT_LEARN_MORE = 'https://zamilbahri.github.io/crt-solver';
+const BASE_URL = 'https://zamilbahri.github.io/crt-solver';
+const MAX_MODULUS_PRODUCT_FOR_URL = 10n ** 12n;
+
+function buildLearnMoreUrl(eqs: CRTEquationDraft[]): string {
+  const active = eqs
+    .filter((eq) => !(eq.a.trim() === '' && eq.m.trim() === ''))
+    .slice(0, 10);
+
+  if (active.length === 0) return BASE_URL;
+
+  const params = new URLSearchParams();
+  let modulusProduct = 1n;
+
+  for (let i = 0; i < active.length; i++) {
+    const a = active[i].a.trim();
+    const m = active[i].m.trim();
+
+    if (
+      a === '' ||
+      m === '' ||
+      !isNonNegativeIntegerString(a) ||
+      !isNonNegativeIntegerString(m)
+    ) {
+      return BASE_URL;
+    }
+
+    const mBig = BigInt(m);
+
+    // Keep moduli valid for CRT.
+    if (mBig < 2n) {
+      return BASE_URL;
+    }
+
+    modulusProduct *= mBig;
+    if (modulusProduct >= MAX_MODULUS_PRODUCT_FOR_URL) {
+      return BASE_URL;
+    }
+
+    params.append(`a${i + 1}`, a);
+    params.append(`m${i + 1}`, m);
+  }
+
+  return `${BASE_URL}?${params.toString()}`;
+}
 
 /**
  * Validates the user's current draft equations in real-time.
@@ -144,6 +188,7 @@ const CRTSolver: React.FC = () => {
   const [solution, setSolution] = useState<CRTSolution | null>(null);
 
   const validation = useMemo(() => validateEquations(equations), [equations]);
+  const learnMoreUrl = useMemo(() => buildLearnMoreUrl(equations), [equations]);
 
   const onChange = (index: number, field: 'a' | 'm', value: string) => {
     setEquations((prev) =>
@@ -387,7 +432,7 @@ const CRTSolver: React.FC = () => {
       <p className="mt-2 text-xs text-gray-300">
         Learn more:{' '}
         <a
-          href={CRT_LEARN_MORE}
+          href={learnMoreUrl}
           target="_blank"
           rel="noreferrer"
           className="text-purple-300 hover:text-purple-200 underline underline-offset-2"
