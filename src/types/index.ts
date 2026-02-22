@@ -23,7 +23,7 @@ export interface PrimalityCheckResult {
   isProbablePrime: boolean;
   verdict: 'Prime' | 'Composite';
   certaintyPercent: string;
-  method: 'Miller-Rabin'; // For now we only have one method, but this allows for adding BPSW.
+  method: 'Miller-Rabin' | 'BPSW';
   rounds?: number;
 }
 
