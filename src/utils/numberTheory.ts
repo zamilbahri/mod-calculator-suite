@@ -249,7 +249,7 @@ function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
 }
 
 // Returns true if n passes the Miller-Rabin test for base a.
-function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
+export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   if (n < 2n) return false;
   if (n === 2n || n === 3n) return true;
   if ((n & 1n) === 0n) return false;
