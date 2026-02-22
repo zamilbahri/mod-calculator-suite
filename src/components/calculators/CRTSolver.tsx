@@ -314,7 +314,7 @@ const CRTSolver: React.FC = () => {
         liveErrors={validation.liveErrors}
         isCoprime={validation.isCoprime}
         onEnter={() => {
-          if (!working) compute();
+          if (validation.canSolve && !working) compute();
         }}
       />
 
