@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import MathText from '../shared/MathText';
 import NumericInput from '../shared/NumericInput';
 import {
-  errorBoxClass,
   primaryButtonClass,
   secondaryButtonClass,
   tertiaryButtonClass,
@@ -14,6 +13,7 @@ import {
 
 import Chevron from '../shared/Chevron';
 import type { CRTEquationDraft } from '../../types';
+import { MathErrorView } from '../shared/MathErrorView';
 
 export interface CRTInputPanelProps {
   equations: CRTEquationDraft[];
@@ -23,7 +23,7 @@ export interface CRTInputPanelProps {
   onResetExample: () => void;
   onClear: () => void;
   onEnter?: () => void;
-  errors: MathValidationError[];
+  liveErrors: MathValidationError[];
   isCoprime: boolean | null; // null if inputs not ready to check
 }
 
@@ -43,7 +43,7 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
   onResetExample,
   onClear,
   onEnter,
-  errors,
+  liveErrors,
   isCoprime,
 }) => {
   const canAdd = equations.length < MAX_EQUATIONS;
@@ -110,34 +110,43 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        {isCoprime === true && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-purple-600 bg-gray-800 px-3 py-2 text-sm text-purple-200">
-            <span className="font-semibold">✓</span> Moduli are pairwise coprime
-          </div>
-        )}
-        {isCoprime === false && (
-          <div className="inline-flex items-center gap-2 rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm text-gray-200">
-            <span className="font-semibold">!</span> Moduli are not pairwise
-            coprime
-          </div>
-        )}
-        {isCoprime === null && (
-          <div className="text-sm text-gray-300">
-            Enter all <MathText className="text-purple-200">{'a_i'}</MathText>{' '}
-            and <MathText className="text-purple-200">{'m_i'}</MathText> to
-            check coprimality.
-          </div>
-        )}
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            {isCoprime === true && (
+              <div className="inline-flex items-center gap-2 rounded-lg border border-purple-600 bg-gray-800 px-3 py-2 text-sm text-purple-200">
+                <span className="font-semibold">✓</span> Moduli are pairwise
+                coprime
+              </div>
+            )}
 
-        <button
-          type="button"
-          onClick={() => setEquationCollapsed((c) => !c)}
-          className={`${tertiaryButtonClass} flex items-center gap-x-1`}
-        >
-          <Chevron open={!isEquationCollapsed} />
-          {isEquationCollapsed ? 'Show equations' : 'Hide equations'}
-        </button>
+            {isCoprime === null && liveErrors.length === 0 && (
+              <div className="text-sm text-gray-300 py-1">
+                Enter <MathText className="text-purple-200">m_i</MathText> to
+                check coprimality.
+              </div>
+            )}
+
+            {liveErrors.map((err, i) => (
+              <div
+                key={i}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-600/50 bg-red-900/20 px-3 py-2 text-sm text-red-200"
+              >
+                <span className="font-semibold text-red-400">!</span>
+                <MathErrorView error={err} />
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setEquationCollapsed((c) => !c)}
+            className={`${tertiaryButtonClass} flex items-center gap-x-1 mt-1`}
+          >
+            <Chevron open={!isEquationCollapsed} />
+            {isEquationCollapsed ? 'Show equations' : 'Hide equations'}
+          </button>
+        </div>
       </div>
 
       {!isEquationCollapsed && (
@@ -187,15 +196,6 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
       {equations.length >= MAX_EQUATIONS ? (
         <div className="mt-3 italic text-sm text-gray-300">
           Equation limit reached
-        </div>
-      ) : null}
-
-      {errors.length > 0 ? (
-        <div className={errorBoxClass}>
-          {errors.map((e, i) => (
-            //TODO: display as MathText
-            <div key={i}>{e.message}</div>
-          ))}
         </div>
       ) : null}
     </section>

@@ -7,10 +7,10 @@ import {
   secondaryButtonClass,
 } from '../shared/ui';
 import {
-  arePairwiseCoprime,
   parseBigIntStrict,
   solveCRT,
   MathValidationError,
+  gcd,
 } from '../../utils/numberTheory';
 import type {
   CRTSolution,
@@ -18,64 +18,118 @@ import type {
   CRTEquationDraft,
 } from '../../types/index.ts';
 import CRTInputPanel from './CRTInputPanel';
+import { MathErrorView } from '../shared/MathErrorView.tsx';
 
 const CRT_LEARN_MORE = 'https://zamilbahri.github.io/crt-solver';
 
+/**
+ * Validates the user's current draft equations in real-time.
+ *
+ * * This function processes the UI state to determine if the system of equations
+ * is mathematically ready to be solved. It checks for partially filled rows,
+ * validates that all moduli are at least 2, and verifies that the provided
+ * moduli are pairwise coprime.
+ *
+ * * @param eqs - An array of `CRTEquationDraft` representing the current UI inputs.
+ *
+ * @returns An object containing:
+ * - `liveErrors`: An array of `MathValidationError` instances pooling formatting/math issues.
+ * - `isCoprime`: `true` if all valid moduli are pairwise coprime, `false` if any share a factor, or `null` if the inputs are incomplete.
+ * - `canSolve`: `true` only if all active rows are fully filled with valid integers and moduli are coprime.
+ */
 function validateEquations(eqs: CRTEquationDraft[]): {
-  errors: MathValidationError[];
+  liveErrors: MathValidationError[];
   isCoprime: boolean | null;
-  parsed: CRTEquationParsed[] | null;
+  canSolve: boolean;
 } {
-  const errors: MathValidationError[] = [];
+  const liveErrors: MathValidationError[] = [];
 
-  // Only consider "active" rows (not both empty)
+  // Filter out completely empty rows, as they are ignored by the solver
   const active = eqs.filter(
     (eq) => !(eq.a.trim() === '' && eq.m.trim() === ''),
   );
 
-  // No active equations -> not ready to check coprimality
+  // If no active equations exist, reset the UI state
   if (active.length === 0) {
-    return { errors: [], isCoprime: null, parsed: null };
+    return { liveErrors, isCoprime: null, canSolve: false };
   }
 
-  const parsed: CRTEquationParsed[] = [];
-  let ready = true;
+  let canSolve = true;
+  let allMValid = true;
+  const moduli: { m: bigint; label: string }[] = [];
+  const mLessThan2: string[] = [];
 
-  for (let i = 0; i < active.length; i++) {
-    const aStr = active[i].a.trim();
-    const mStr = active[i].m.trim();
+  // 1. Process each active equation for basic formatting and minimum limits
+  active.forEach((eq, i) => {
+    const aStr = eq.a.trim();
+    const mStr = eq.m.trim();
+    const label = `m_{${i + 1}}`; // Keep LaTeX formatting for UI error rendering
 
-    // If partially filled, we can't assess coprime yet
-    if (mStr === '') {
-      ready = false;
-      continue;
+    // If an active row is missing either 'a' or 'm', we cannot proceed to solve
+    if (aStr === '' || mStr === '') canSolve = false;
+
+    if (mStr !== '' && /^\d+$/.test(mStr)) {
+      const m = BigInt(mStr);
+
+      // Modulus must be >= 2 for modular arithmetic
+      if (m < 2n) {
+        mLessThan2.push(label);
+        allMValid = false;
+        canSolve = false;
+      } else {
+        moduli.push({ m, label });
+      }
+    } else if (mStr !== '') {
+      // If m is not empty but fails the digits regex, it's invalid
+      allMValid = false;
+      canSolve = false;
     }
+  });
 
-    // Digits-only checks (usually redundant if NumericInput filters, but safe)
-    if (!/^\d+$/.test(mStr)) {
-      ready = false;
-      continue;
-    }
-
-    const a = BigInt(aStr);
-    const m = BigInt(mStr);
-
-    if (m < 2n) {
-      errors.push(
-        new MathValidationError(`m_${i + 1}`, 'must be at least', '2'),
-      );
-      continue;
-    }
-
-    parsed.push({ a, m });
+  // Pool all m < 2 errors into a single, clean message
+  if (mLessThan2.length > 0) {
+    liveErrors.push(
+      new MathValidationError(mLessThan2, 'must be at least', '2'),
+    );
   }
 
-  if (!ready || errors.length > 0 || parsed.length !== active.length) {
-    return { errors, isCoprime: null, parsed: null };
+  let isCoprime: boolean | null = null;
+
+  // 2. Process coprimality if we have valid moduli to check
+  if (allMValid && moduli.length > 0) {
+    if (moduli.length === 1) {
+      // Trivial case: A single valid modulus is inherently pairwise coprime
+      isCoprime = true;
+    } else if (moduli.length === active.length) {
+      // Multiple moduli: Only check if every active row has a successfully parsed modulus
+      const nonCoprimeSet = new Set<string>();
+
+      for (let i = 0; i < moduli.length; i++) {
+        for (let j = i + 1; j < moduli.length; j++) {
+          if (gcd(moduli[i].m, moduli[j].m) !== 1n) {
+            nonCoprimeSet.add(moduli[i].label);
+            nonCoprimeSet.add(moduli[j].label);
+          }
+        }
+      }
+
+      if (nonCoprimeSet.size > 0) {
+        isCoprime = false;
+        canSolve = false;
+        // Pool all conflicting moduli into a single error message
+        liveErrors.push(
+          new MathValidationError(
+            Array.from(nonCoprimeSet),
+            'are not pairwise coprime',
+          ),
+        );
+      } else {
+        isCoprime = true;
+      }
+    }
   }
 
-  const moduli = parsed.map((p) => p.m);
-  return { errors, isCoprime: arePairwiseCoprime(moduli), parsed };
+  return { liveErrors, isCoprime, canSolve };
 }
 
 const CRTSolver: React.FC = () => {
@@ -115,7 +169,7 @@ const CRTSolver: React.FC = () => {
 
   const onResetExample = () => {
     const EXAMPLE_PRIMES = [
-      // first 10 primes (as requested)
+      // first 10 primes
       2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
       // deterministic fallback (only used if needed)
       31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107,
@@ -188,35 +242,48 @@ const CRTSolver: React.FC = () => {
   };
 
   const compute = async () => {
-    setError('');
+    setError(null);
     setSolution(null);
     setWorking(true);
 
     try {
       await new Promise((r) => setTimeout(r, 0));
 
-      // Remove rows where BOTH a and m are empty
       const compact = equations.filter(
         (eq) => !(eq.a.trim() === '' && eq.m.trim() === ''),
       );
-
-      // If we removed any, reflect it in the UI (per your requirement)
       if (compact.length > 0 && compact.length !== equations.length) {
         setEquations(compact);
       }
 
-      // If everything was empty, force parseBigIntStrict to throw your standard message
       if (compact.length === 0) {
-        parseBigIntStrict('', 'a_1'); // throws: "a_1 cannot be empty."
+        throw new MathValidationError('a_{1}', 'cannot be empty.');
       }
 
-      // Parse only the compacted equations.
-      // If any active row is missing a or m, parseBigIntStrict will throw the desired message.
+      // 1. Pool empty inputs across ALL active rows
+      const missingA: string[] = [];
+      const missingM: string[] = [];
+
+      compact.forEach((eq, i) => {
+        if (eq.a.trim() === '') missingA.push(`a_{${i + 1}}`);
+        if (eq.m.trim() === '') missingM.push(`m_{${i + 1}}`);
+      });
+
+      if (missingA.length > 0 && missingM.length > 0) {
+        throw new MathValidationError(
+          [...missingA, ...missingM],
+          'cannot be empty.',
+        );
+      } else if (missingA.length > 0) {
+        throw new MathValidationError(missingA, 'cannot be empty.');
+      } else if (missingM.length > 0) {
+        throw new MathValidationError(missingM, 'cannot be empty.');
+      }
+
+      // 2. Parse (since we guaranteed nothing is empty, parseBigIntStrict is safe)
       const parsed: CRTEquationParsed[] = compact.map((eq, i) => {
         const a = parseBigIntStrict(eq.a, `a_{${i + 1}}`);
         const m = parseBigIntStrict(eq.m, `m_{${i + 1}}`);
-        if (m < 2n)
-          throw new MathValidationError(`m_{${i + 1}}`, 'must be at least 2.');
         return { a, m };
       });
 
@@ -224,11 +291,7 @@ const CRTSolver: React.FC = () => {
       setSolution(crtResult);
     } catch (e) {
       if (e instanceof MathValidationError) {
-        setError(
-          <span>
-            <MathText>{e.fieldName}</MathText> {e.reason}
-          </span>,
-        );
+        setError(<MathErrorView error={e} />);
       } else if (e instanceof Error) {
         setError(e.message);
       } else {
@@ -248,7 +311,7 @@ const CRTSolver: React.FC = () => {
         onRemove={onRemove}
         onResetExample={onResetExample}
         onClear={onClear}
-        errors={validation.errors}
+        liveErrors={validation.liveErrors}
         isCoprime={validation.isCoprime}
         onEnter={() => {
           if (!working) compute();
@@ -259,7 +322,7 @@ const CRTSolver: React.FC = () => {
         <button
           type="button"
           onClick={compute}
-          disabled={working}
+          disabled={!validation.canSolve || working}
           className={primaryButtonClass}
           title="Compute CRT solution"
         >
