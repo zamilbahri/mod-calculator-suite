@@ -1,6 +1,25 @@
 // numberTheory.ts - Common number theory utilities for the mod calculators.
 import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
 
+/**
+ * Custom error class for math validation errors, providing structured information about which fields failed validation and why.
+ * May be used with MathErrorView for LaTeX error display in the UI.
+ *
+ * Includes:
+ * - `fieldNames`: An array of field names that caused the validation error.
+ * - `reason`: A human-readable explanation of the validation failure.
+ * - `expectedValue` (optional): Additional context about the expected value or format.
+ *
+ * Example usage:
+ * throw new MathValidationError(['m1', 'm2'], 'are not pairwise coprime');
+ * This would create an error with the message "m1, m2 are not pairwise coprime".
+ *
+ * Example usage with expected value:
+ * throw new MathValidationError('n', 'must be greater than', '2');
+ * This would create an error with the message "n must be greater than 2".
+ *
+ * The class extends the built-in Error class, allowing it to be used in try-catch blocks and to have a stack trace.
+ */
 export class MathValidationError extends Error {
   fieldNames: string[];
   reason: string;
@@ -25,6 +44,8 @@ export class MathValidationError extends Error {
   }
 }
 
+// ---------- Input Validation ----------
+
 export function isNonNegativeIntegerString(s: string): boolean {
   return s === '' || /^\d+$/.test(s);
 }
@@ -39,6 +60,8 @@ export function parseBigIntStrict(input: string, fieldName = 'value'): bigint {
   }
   return BigInt(s);
 }
+
+// ---------- Number Theory Utilities ----------
 
 export function modNormalize(x: bigint, m: bigint): bigint {
   // assumes m > 0
@@ -104,22 +127,22 @@ export function extendedGCD(a: bigint, b: bigint): EGCDResult {
 
 /**
  * Fast exponentiation: a^n mod m
- * If m <= 1, we treat it as "no modulus" and compute exact power (careful: can explode!).
  * For the course calculators, we’ll typically use modulus.
  */
 export function modPow(a: bigint, n: bigint, m: bigint): bigint {
-  if (n < 0n) throw new Error('Exponent n must be non-negative.');
-  if (m === 0n) throw new Error('Modulus m must be non-zero.');
+  if (n < 0n) throw new MathValidationError('n', 'must be non-negative.');
+  if (m <= 0n) throw new MathValidationError('m', 'must be positive.');
 
-  const mod = m < 0n ? -m : m;
-  let base = ((a % mod) + mod) % mod;
+  if (m === 1n) return 0n; // a^n mod 1 is always 0
+
+  let base = ((a % m) + m) % m;
 
   let exp = n;
   let result = 1n;
 
   while (exp > 0n) {
-    if (exp & 1n) result = (result * base) % mod;
-    base = (base * base) % mod;
+    if (exp & 1n) result = (result * base) % m;
+    base = (base * base) % m;
     exp >>= 1n;
   }
   return result;
