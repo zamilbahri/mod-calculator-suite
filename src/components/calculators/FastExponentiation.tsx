@@ -10,8 +10,10 @@ import {
   modPow,
   parseBigIntStrict,
   isNonNegativeIntegerString,
+  MathValidationError,
 } from '../../utils/numberTheory';
 import NumericInput from '../shared/NumericInput';
+import { MathErrorView } from '../shared/MathErrorView';
 
 const BASE_URL = 'https://zamilbahri.github.io/fast-exponentiation';
 const MAX_INT_FOR_URL = 2n ** 36n;
@@ -49,7 +51,7 @@ const FastExponentiation: React.FC = () => {
   const [n, setN] = useState('');
   const [m, setM] = useState('');
   const [result, setResult] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<React.ReactNode>(null);
   const [computed, setComputed] = useState(false);
   const [working, setWorking] = useState(false);
 
@@ -69,12 +71,16 @@ const FastExponentiation: React.FC = () => {
       const N = parseBigIntStrict(n, 'n');
       const M = parseBigIntStrict(m, 'm');
 
-      if (M < 2n) throw new Error('m must be a positive integer m > 1.');
-
       const rVal = modPow(A, N, M);
       setResult(rVal.toString());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Invalid input.');
+      if (e instanceof MathValidationError) {
+        setError(<MathErrorView error={e} />);
+      } else if (e instanceof Error) {
+        setError(e.message);
+      } else {
+        setError('Failed to compute a^n mod m');
+      }
     } finally {
       setWorking(false);
     }
