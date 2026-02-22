@@ -2,16 +2,24 @@
 import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
 
 export class MathValidationError extends Error {
-  fieldName: string;
+  fieldNames: string[];
   reason: string;
   expectedValue?: string;
 
-  constructor(fieldName: string, reason: string, expectedValue?: string) {
+  constructor(
+    fieldNames: string | string[],
+    reason: string,
+    expectedValue?: string,
+  ) {
+    // Force fieldNames into an array if a single string is passed
+    const namesArray = Array.isArray(fieldNames) ? fieldNames : [fieldNames];
     const valueSuffix = expectedValue !== undefined ? ` ${expectedValue}` : '';
-    super(`${fieldName} ${reason}${valueSuffix}`);
+
+    // e.g., "m_{1}, m_{2} are not pairwise coprime"
+    super(`${namesArray.join(', ')} ${reason}${valueSuffix}`);
 
     this.name = 'MathValidationError';
-    this.fieldName = fieldName;
+    this.fieldNames = namesArray;
     this.reason = reason;
     this.expectedValue = expectedValue;
   }
