@@ -1,5 +1,10 @@
 // numberTheory.ts - Common number theory utilities for the mod calculators.
-import type { CRTSolution, EGCDResult, CRTEquationParsed } from '../types';
+import type {
+  CRTSolution,
+  EGCDResult,
+  CRTEquationParsed,
+  PrimalityCheckResult,
+} from '../types';
 
 /**
  * Custom error class for math validation errors, providing structured information about which fields failed validation and why.
@@ -258,6 +263,11 @@ const MR_BASE_POOL: bigint[] = [
   173n,
 ];
 
+// Returns the number of bits needed to represent n in binary, i.e. floor(log2(n)) + 1 for n > 0.
+function bitLength(n: bigint): number {
+  return n.toString(2).length;
+}
+
 // Decomposes n-1 into 2^s * d where d is odd.
 // Used in Miller-Rabin: we need n-1 = 2^s * d for the test.
 function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
@@ -295,6 +305,23 @@ export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   return false;
 }
 
+export function millerRabinCertaintyPercent(
+  iterations: number,
+  decimals = 30,
+): string {
+  const scale = 10n ** BigInt(decimals);
+  const denom = 4n ** BigInt(iterations); // exact
+  const hundredScaled = 100n * scale;
+
+  // floor(100 * (1 - 1/denom) * scale)
+  const certaintyScaled = hundredScaled - hundredScaled / denom;
+
+  const intPart = certaintyScaled / scale;
+  const fracPart = (certaintyScaled % scale).toString().padStart(decimals, '0');
+
+  return `${intPart}.${fracPart}%`;
+}
+
 export function isMillerRabinProbablePrime(
   n: bigint,
   iterations = 24,
@@ -322,6 +349,23 @@ export function isMillerRabinProbablePrime(
   return true;
 }
 
-export function primalityCheck(n: bigint): boolean {
-  return isMillerRabinProbablePrime(n, 24);
+function millerRabinIterationsForBitLength(bits: number): number {
+  if (bits <= 64) return 12;
+  if (bits <= 128) return 16;
+  if (bits <= 256) return 24;
+  if (bits <= 512) return 32;
+  if (bits <= 1024) return 40;
+  return 48;
+}
+
+export function primalityCheck(n: bigint): PrimalityCheckResult {
+  const rounds = millerRabinIterationsForBitLength(bitLength(n));
+  const primeLike = isMillerRabinProbablePrime(n, rounds);
+  return {
+    isProbablePrime: primeLike,
+    verdict: primeLike ? 'Prime' : 'Composite',
+    certaintyPercent: primeLike ? millerRabinCertaintyPercent(rounds) : '100%',
+    method: 'Miller-Rabin',
+    rounds,
+  };
 }
