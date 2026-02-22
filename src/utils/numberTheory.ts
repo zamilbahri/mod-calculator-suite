@@ -175,3 +175,130 @@ export function solveCRT(equations: CRTEquationParsed[]): CRTSolution {
 
   return { x: modNormalize(sum, M), M };
 }
+
+// ---------- Primality Testing ----------
+const SMALL_PRIMES: bigint[] = [
+  2n,
+  3n,
+  5n,
+  7n,
+  11n,
+  13n,
+  17n,
+  19n,
+  23n,
+  29n,
+  31n,
+  37n,
+];
+
+const MR_BASE_POOL: bigint[] = [
+  2n,
+  3n,
+  5n,
+  7n,
+  11n,
+  13n,
+  17n,
+  19n,
+  23n,
+  29n,
+  31n,
+  37n,
+  41n,
+  43n,
+  47n,
+  53n,
+  59n,
+  61n,
+  67n,
+  71n,
+  73n,
+  79n,
+  83n,
+  89n,
+  97n,
+  101n,
+  103n,
+  107n,
+  109n,
+  113n,
+  127n,
+  131n,
+  137n,
+  139n,
+  149n,
+  151n,
+  157n,
+  163n,
+  167n,
+  173n,
+];
+
+// Decomposes n-1 into 2^s * d where d is odd.
+// Used in Miller-Rabin: we need n-1 = 2^s * d for the test.
+function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
+  let d = n - 1n;
+  let s = 0;
+  // Keep dividing by 2 (right shift) until d is odd
+  while ((d & 1n) === 0n) {
+    d >>= 1n;
+    s++;
+  }
+  return { d, s };
+}
+
+// Returns true if n passes the Miller-Rabin test for base a.
+function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
+  if (n < 2n) return false;
+  if (n === 2n || n === 3n) return true;
+  if ((n & 1n) === 0n) return false;
+
+  const a = modNormalize(aIn, n);
+  if (a === 0n) return true;
+
+  const { d, s } = decomposeNMinusOne(n);
+  // Compute a^d mod n
+  let x = modPow(a, d, n);
+  // First condition: a^d ≡ 1 (mod n), or a^d ≡ -1 (mod n)
+  if (x === 1n || x === n - 1n) return true;
+
+  // Second condition: check if a^(2^r * d) ≡ -1 (mod n) for some r in [1, s)
+  // by repeatedly squaring x
+  for (let r = 1; r < s; r++) {
+    x = modNormalize(x * x, n);
+    if (x === n - 1n) return true;
+  }
+  return false;
+}
+
+export function isMillerRabinProbablePrime(
+  n: bigint,
+  iterations = 24,
+): boolean {
+  if (n < 2n) return false;
+
+  // Quick rejection: check against small primes
+  for (const p of SMALL_PRIMES) {
+    if (n === p) return true;
+    if (n % p === 0n) return false;
+  }
+
+  if ((n & 1n) === 0n) return false;
+
+  // Run Miller-Rabin test with multiple bases for higher confidence
+  // With k iterations, error probability is at most 4^(-k)
+  for (let i = 0; i < iterations; i++) {
+    const baseCandidate =
+      i < MR_BASE_POOL.length ? MR_BASE_POOL[i] : 2n + 2n * BigInt(i);
+    const a = baseCandidate % n;
+    if (a === 0n || a === 1n) continue;
+    if (!isStrongProbablePrimeForBase(n, a)) return false;
+  }
+
+  return true;
+}
+
+export function primalityCheck(n: bigint): boolean {
+  return isMillerRabinProbablePrime(n, 24);
+}
