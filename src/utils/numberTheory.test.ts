@@ -34,13 +34,19 @@ test('Miller-Rabin primality checks classify common values correctly', () => {
   assert.equal(isMillerRabinProbablePrime(561n), false);
 });
 
+// test 18446744073709551557n (largest 64-bit prime) to verify Miller-Rabin implementation works correctly and time it
+test('Miller-Rabin correctly identifies largest 64-bit prime: 2^64 - 59', () => {
+  const largest64BitPrime = 18446744073709551557n;
+  assert.equal(isMillerRabinProbablePrime(largest64BitPrime), true);
+});
+
 test('`Miller-Rabin classifies 300-digit prime and composite correctly`', () => {
-  const largePrime = BigInt(
+  const large300DigitPrime = BigInt(
     '127132076458401757468036623152695170984739359706586150912663216528593321429869090699746992326534144324300661301717226849991136593663378040378008951682192002064562184945251552794785466183505623083116528861380924896057046777619381099928260749089717152750908752433292730083647631169999993130024512888541',
   );
-  assert.equal(isMillerRabinProbablePrime(largePrime), true);
-  const largeComposite = BigInt(
+  assert.equal(isMillerRabinProbablePrime(large300DigitPrime), true);
+  const large300DigitComposite = BigInt(
     '240730376638477781633428760246088328628926821240075613429589604482442047388650034801981574059866668251318811448279592394261986244949892886797890430391904570508784495682121085195443622282609104374004021235548275476963302350204539457088120127570535094487178842007183240271474546948478974651361543211561',
   );
-  assert.equal(isMillerRabinProbablePrime(largeComposite), false);
+  assert.equal(isMillerRabinProbablePrime(large300DigitComposite), false);
 });
