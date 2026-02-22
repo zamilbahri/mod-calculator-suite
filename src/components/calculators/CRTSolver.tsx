@@ -303,7 +303,7 @@ const CRTSolver: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <CRTInputPanel
         equations={equations}
         onChange={onChange}
@@ -318,7 +318,7 @@ const CRTSolver: React.FC = () => {
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-3 pb-1">
+      <div className="mt-4 flex flex-wrap items-center gap-3 pb-1">
         <button
           type="button"
           onClick={compute}
