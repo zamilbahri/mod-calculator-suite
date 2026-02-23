@@ -6,6 +6,7 @@ import MathText from './components/shared/MathText';
 import GCDCalculator from './components/calculators/GCDCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
+import PrimeChecker from './components/calculators/PrimeChecker';
 
 const App: React.FC = () => {
   return (
@@ -80,6 +81,19 @@ const App: React.FC = () => {
             }
           >
             <CRTSolver />
+          </CalculatorCard>
+
+          <CalculatorCard
+            title="Prime Checker"
+            subtitle={
+              <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                <span>Check if</span>
+                <MathText className="text-purple-200">n</MathText>
+                <span>is prime using the Miller-Rabin primality test.</span>
+              </span>
+            }
+          >
+            <PrimeChecker />
           </CalculatorCard>
         </div>
       </div>
