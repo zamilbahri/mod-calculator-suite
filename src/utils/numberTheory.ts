@@ -347,29 +347,7 @@ function randomBigIntBelow(upperExclusive: bigint): bigint {
   if (upperExclusive <= 2n) {
     throw new MathValidationError('n', 'must be greater than', '3');
   }
-  // We sample in [0, upperExclusive) by generating values with exactly enough
-  // bits to cover upperExclusive - 1, then rejecting out-of-range samples.
-  const max = upperExclusive - 1n;
-  const bits = bitLength(max);
-  const bytesLen = Math.ceil(bits / 8);
-  // If bits is not byte-aligned, clear the unused high bits in the first byte.
-  // Example: bits=10 -> bytesLen=2 -> excessBits=6, so mask 0b00000011.
-  const excessBits = bytesLen * 8 - bits;
-  const topMask = 0xff >> excessBits;
-
-  while (true) {
-    const bytes = randomBytes(bytesLen);
-    // Clamp the first byte so the constructed bigint never exceeds bit width.
-    bytes[0] &= topMask;
-
-    let value = 0n;
-    // Parse big-endian bytes into a bigint: (((b0 << 8) | b1) << 8) | ...
-    for (const byte of bytes) {
-      value = (value << 8n) | BigInt(byte);
-    }
-    // Rejection sampling keeps the final distribution uniform below the bound.
-    if (value < upperExclusive) return value;
-  }
+  return randomBigIntBelowAny(upperExclusive);
 }
 
 // Returns true if n passes the Miller-Rabin test for base a.
@@ -436,6 +414,55 @@ export interface PrimalityCheckOptions {
   method?: PrimalityMethodSelection;
   millerRabinRounds?: number;
 }
+
+function randomBigIntBelowAny(upperExclusive: bigint): bigint {
+  if (upperExclusive <= 0n) {
+    throw new MathValidationError('upperExclusive', 'must be positive.');
+  }
+  if (upperExclusive === 1n) return 0n;
+
+  const max = upperExclusive - 1n;
+  const bits = bitLength(max);
+  const bytesLen = Math.ceil(bits / 8);
+  const excessBits = bytesLen * 8 - bits;
+  const topMask = 0xff >> excessBits;
+
+  while (true) {
+    const bytes = randomBytes(bytesLen);
+    bytes[0] &= topMask;
+
+    let value = 0n;
+    for (const byte of bytes) {
+      value = (value << 8n) | BigInt(byte);
+    }
+    if (value < upperExclusive) return value;
+  }
+}
+
+function randomBigIntInRange(
+  minInclusive: bigint,
+  maxInclusive: bigint,
+): bigint {
+  if (maxInclusive < minInclusive) {
+    throw new MathValidationError('range', 'is invalid.');
+  }
+  const width = maxInclusive - minInclusive + 1n;
+  return minInclusive + randomBigIntBelowAny(width);
+}
+
+export type PrimeSizeType = 'digits' | 'bits';
+
+export interface PrimeGenerationOptions {
+  size: number;
+  sizeType: PrimeSizeType;
+  count?: number;
+  method?: PrimalityMethodSelection;
+  millerRabinRounds?: number;
+}
+
+export const MAX_GENERATED_PRIME_BITS = 4096;
+export const MAX_GENERATED_PRIME_DIGITS = 1300;
+export const MAX_GENERATED_PRIME_COUNT = 5;
 
 function isPerfectSquare(n: bigint): boolean {
   if (n < 0n) return false;
@@ -569,6 +596,115 @@ function millerRabinErrorProbabilityExponent(iterations: number): number {
   // (1/4)^k = 2^(-2k), so b = 2k in error <= 2^-b.
   return 2 * iterations;
 }
+
+export function validatePrimeGenerationRequest(
+  size: number,
+  sizeType: PrimeSizeType,
+  count = 1,
+): string | null {
+  if (!Number.isInteger(size) || size <= 0) {
+    return 'Prime size must be a positive integer.';
+  }
+  if (!Number.isInteger(count) || count <= 0) {
+    return 'Number of primes must be a positive integer.';
+  }
+  if (count > MAX_GENERATED_PRIME_COUNT) {
+    return `Maximum number of generated primes is ${MAX_GENERATED_PRIME_COUNT}.`;
+  }
+  if (sizeType === 'bits') {
+    if (size > MAX_GENERATED_PRIME_BITS) {
+      return `Maximum size is ${MAX_GENERATED_PRIME_BITS} bits.`;
+    }
+    if (size < 2) {
+      return 'Bit size must be at least 2.';
+    }
+    return null;
+  }
+  if (size > MAX_GENERATED_PRIME_DIGITS) {
+    return `Maximum size is ${MAX_GENERATED_PRIME_DIGITS} digits.`;
+  }
+  return null;
+}
+
+function pow10(exp: number): bigint {
+  return BigInt(`1${'0'.repeat(exp)}`);
+}
+
+function randomOddCandidateByBits(bits: number): bigint {
+  const min = 1n << BigInt(bits - 1);
+  const max = (1n << BigInt(bits)) - 1n;
+  let candidate = randomBigIntInRange(min, max);
+  candidate |= 1n;
+  candidate |= min;
+  return candidate;
+}
+
+function randomOddCandidateByDigits(digits: number): bigint {
+  if (digits === 1) {
+    const oneDigitPrimes = [2n, 3n, 5n, 7n];
+    return oneDigitPrimes[Math.floor(Math.random() * oneDigitPrimes.length)];
+  }
+  const min = pow10(digits - 1);
+  const max = pow10(digits) - 1n;
+  let candidate = randomBigIntInRange(min, max);
+  candidate |= 1n;
+  return candidate;
+}
+
+function isCandidatePrime(
+  candidate: bigint,
+  method: PrimalityMethodSelection,
+  millerRabinRounds: number,
+): boolean {
+  const check = primalityCheck(candidate, { method, millerRabinRounds });
+  return check.isProbablePrime;
+}
+
+function generateOnePrime(
+  size: number,
+  sizeType: PrimeSizeType,
+  method: PrimalityMethodSelection,
+  millerRabinRounds: number,
+): bigint {
+  while (true) {
+    const candidate =
+      sizeType === 'bits'
+        ? randomOddCandidateByBits(size)
+        : randomOddCandidateByDigits(size);
+    if (isCandidatePrime(candidate, method, millerRabinRounds)) {
+      return candidate;
+    }
+  }
+}
+
+export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
+  const count = options.count ?? 1;
+  const method = options.method ?? 'Auto';
+  const millerRabinRounds = options.millerRabinRounds ?? 24;
+
+  const validationError = validatePrimeGenerationRequest(
+    options.size,
+    options.sizeType,
+    count,
+  );
+  if (validationError) {
+    throw new MathValidationError('prime generation', validationError);
+  }
+
+  const primes: bigint[] = [];
+  for (let i = 0; i < count; i++) {
+    primes.push(
+      generateOnePrime(
+        options.size,
+        options.sizeType,
+        method,
+        millerRabinRounds,
+      ),
+    );
+  }
+  return primes;
+}
+
 export function primalityCheck(
   n: bigint,
   options: PrimalityCheckOptions | number = 24,
