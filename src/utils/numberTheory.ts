@@ -563,11 +563,9 @@ function millerRabinErrorProbabilityExponent(iterations: number): number {
 }
 
 function millerRabinIterationsForBitLength(bits: number): number {
-  if (bits <= 128) return 16;
-  if (bits <= 256) return 24;
-  if (bits <= 512) return 32;
-  if (bits <= 1024) return 40;
-  if (bits <= 2048) return 48;
+  if (bits <= 128) return 32;
+  if (bits <= 256) return 40;
+  if (bits <= 1024) return 48;
   return 56;
 }
 
