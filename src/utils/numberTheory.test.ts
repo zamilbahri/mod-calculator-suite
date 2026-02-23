@@ -1,52 +1,62 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  isStrongProbablePrimeForBase,
-  isMillerRabinProbablePrime,
-} from './numberTheory';
+import { primalityCheck as primalityTest } from './numberTheory';
 
-test('isStrongProbablePrimeForBase handles edge cases and base normalization', () => {
-  assert.equal(isStrongProbablePrimeForBase(0n, 2n), false);
-  assert.equal(isStrongProbablePrimeForBase(1n, 2n), false);
-  assert.equal(isStrongProbablePrimeForBase(2n, 1n), true);
-  assert.equal(isStrongProbablePrimeForBase(3n, 2n), true);
-  assert.equal(isStrongProbablePrimeForBase(10n, 3n), false);
+test('primalityTest classifies edge values with small-prime method', () => {
+  assert.equal(primalityTest(0n).verdict, 'Composite');
+  assert.equal(primalityTest(1n).verdict, 'Composite');
+  assert.equal(primalityTest(2n).verdict, 'Prime');
+  assert.equal(primalityTest(3n).verdict, 'Prime');
+  assert.equal(primalityTest(4n).verdict, 'Composite');
+  assert.equal(primalityTest(9n).verdict, 'Composite');
+  assert.equal(primalityTest(10n).verdict, 'Composite');
+  assert.equal(primalityTest(13n).verdict, 'Prime');
+  assert.equal(primalityTest(15n).verdict, 'Composite');
+  assert.equal(primalityTest(97n).verdict, 'Prime');
 
-  // a % n === 0 short-circuits to true in current implementation.
-  assert.equal(isStrongProbablePrimeForBase(13n, 26n), true);
-
-  // Negative bases are normalized modulo n.
-  assert.equal(isStrongProbablePrimeForBase(13n, -2n), true);
+  assert.equal(primalityTest(9n).method, 'Small Prime Check');
+  assert.equal(primalityTest(10n).method, 'Small Prime Check');
+  assert.equal(primalityTest(13n).method, 'Small Prime Check');
+  assert.equal(primalityTest(15n).method, 'Small Prime Check');
+  assert.equal(primalityTest(97n).method, 'Small Prime Check');
+  assert.equal(primalityTest(4n).method, 'Small Prime Check');
 });
 
-test('isStrongProbablePrimeForBase separates primes from clear composites', () => {
-  assert.equal(isStrongProbablePrimeForBase(97n, 5n), true);
-  assert.equal(isStrongProbablePrimeForBase(9n, 2n), false);
-  assert.equal(isStrongProbablePrimeForBase(15n, 2n), false);
+test('primalityTest reports known small-prime factors', () => {
+  const evenComposite = primalityTest(100n);
+  assert.equal(evenComposite.verdict, 'Composite');
+  assert.equal(evenComposite.method, 'Small Prime Check');
+  assert.equal(evenComposite.compositeReason, 'Factor found: 2');
+
+  const oddComposite = primalityTest(561n);
+  assert.equal(oddComposite.verdict, 'Composite');
+  assert.equal(oddComposite.method, 'Small Prime Check');
+  assert.equal(oddComposite.compositeReason, 'Factor found: 3');
 });
 
-test('Miller-Rabin primality checks classify common values correctly', () => {
-  assert.equal(isMillerRabinProbablePrime(2n), true);
-  assert.equal(isMillerRabinProbablePrime(97n), true);
-  assert.equal(isMillerRabinProbablePrime(1n), false);
-  assert.equal(isMillerRabinProbablePrime(100n), false);
-  assert.equal(isMillerRabinProbablePrime(561n), false);
+test('primalityTest uses Miller-Rabin for larger prime candidate', () => {
+  const largest64BitPrime = 18446744073709551557n; // 2^64 - 59
+  const result = primalityTest(largest64BitPrime);
+
+  assert.equal(result.verdict, 'Probably Prime');
+  assert.equal(result.method, 'Miller-Rabin');
+  assert.ok((result.rounds ?? 0) > 0);
+  assert.ok((result.errorProbabilityExponent ?? 0) > 0);
 });
 
-// test 18446744073709551557n (largest 64-bit prime) to verify Miller-Rabin implementation works correctly and time it
-test('Miller-Rabin correctly identifies largest 64-bit prime: 2^64 - 59', () => {
-  const largest64BitPrime = 18446744073709551557n;
-  assert.equal(isMillerRabinProbablePrime(largest64BitPrime), true);
-});
-
-test('Miller-Rabin classifies 300-digit prime and composite correctly', () => {
+test('primalityTest classifies 300-digit prime and composite correctly', () => {
   const large300DigitPrime = BigInt(
     '127132076458401757468036623152695170984739359706586150912663216528593321429869090699746992326534144324300661301717226849991136593663378040378008951682192002064562184945251552794785466183505623083116528861380924896057046777619381099928260749089717152750908752433292730083647631169999993130024512888541',
   );
-  assert.equal(isMillerRabinProbablePrime(large300DigitPrime), true);
+  const primeResult = primalityTest(large300DigitPrime);
+  assert.equal(primeResult.verdict, 'Probably Prime');
+  assert.equal(primeResult.method, 'Miller-Rabin');
+
   const large300DigitComposite = BigInt(
     '240730376638477781633428760246088328628926821240075613429589604482442047388650034801981574059866668251318811448279592394261986244949892886797890430391904570508784495682121085195443622282609104374004021235548275476963302350204539457088120127570535094487178842007183240271474546948478974651361543211561',
   );
-  assert.equal(isMillerRabinProbablePrime(large300DigitComposite), false);
+  const compositeResult = primalityTest(large300DigitComposite);
+  assert.equal(compositeResult.verdict, 'Composite');
+  assert.equal(compositeResult.method, 'Miller-Rabin');
 });
