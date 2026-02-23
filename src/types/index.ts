@@ -29,6 +29,23 @@ export interface PrimalityCheckResult {
   rounds?: number;
 }
 
+export type PrimalityMethodSelection = 'Auto' | 'Miller-Rabin' | 'Baillie-PSW';
+
+export interface PrimalityCheckOptions {
+  method?: PrimalityMethodSelection;
+  millerRabinRounds?: number;
+}
+
+export type PrimeSizeType = 'digits' | 'bits';
+
+export interface PrimeGenerationOptions {
+  size: number;
+  sizeType: PrimeSizeType;
+  count?: number;
+  method?: PrimalityMethodSelection;
+  millerRabinRounds?: number;
+}
+
 export interface MatrixShape {
   rows: number;
   cols: number;
