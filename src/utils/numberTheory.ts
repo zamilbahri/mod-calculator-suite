@@ -600,7 +600,7 @@ export function primalityCheck(n: bigint): PrimalityCheckResult {
     return {
       isProbablePrime: bpswPrime,
       verdict: bpswPrime ? 'Prime' : 'Composite',
-      method: 'Baille-PSW',
+      method: 'Baillie-PSW',
       errorProbabilityExponent: bpswPrime ? 0 : undefined,
       compositeReason: bpswPrime ? undefined : 'BPSW test failed',
       rounds: 0,

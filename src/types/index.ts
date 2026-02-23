@@ -22,7 +22,7 @@ export interface CRTSolution {
 export interface PrimalityCheckResult {
   isProbablePrime: boolean;
   verdict: 'Prime' | 'Probably Prime' | 'Composite';
-  method: 'Small Prime Check' | 'Baille-PSW' | 'Miller-Rabin';
+  method: 'Small Prime Check' | 'Baillie-PSW' | 'Miller-Rabin';
   errorProbabilityExponent?: number;
   compositeReason?: string;
   witness?: bigint;

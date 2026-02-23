@@ -89,7 +89,10 @@ const App: React.FC = () => {
               <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
                 <span>Check if</span>
                 <MathText className="text-purple-200">n</MathText>
-                <span>is prime using the Miller-Rabin primality test.</span>
+                <span>
+                  is prime using the Baillie-PSW and the Miller-Rabin primality
+                  test.
+                </span>
               </span>
             }
           >

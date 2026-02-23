@@ -123,10 +123,10 @@ const PrimeChecker: React.FC = () => {
           result.verdict === 'Probably Prime' ? (
             <MathText className="block text-sm text-gray-200">{`\\text{Uncertainty } \\le 2^{-${result.errorProbabilityExponent ?? 0}}`}</MathText>
           ) : null}
-          {result.method === 'Baille-PSW' && result.verdict === 'Prime' ? (
+          {result.method === 'Baillie-PSW' && result.verdict === 'Prime' ? (
             <MathText className="block text-sm text-gray-200">
               {
-                '\\text{No counterexample to Baille-PSW has been found for values below } 2^{64}'
+                '\\text{No counterexample to Baillie-PSW has been found for values below } 2^{64}'
               }
             </MathText>
           ) : null}
@@ -138,9 +138,9 @@ const PrimeChecker: React.FC = () => {
               <MathText className="block text-sm text-gray-200">{`\\text{${result.compositeReason ?? 'Composite'}}`}</MathText>
             )
           ) : null}
-          {result.method === 'Baille-PSW' && result.verdict === 'Composite' ? (
+          {result.method === 'Baillie-PSW' && result.verdict === 'Composite' ? (
             <MathText className="block text-sm text-gray-200">
-              {'\\text{Baille-PSW test failed}'}
+              {'\\text{Baillie-PSW test failed}'}
             </MathText>
           ) : null}
           {result.method === 'Miller-Rabin' &&
