@@ -35,14 +35,22 @@ test('primalityTest reports known small-prime factors', () => {
   assert.equal(oddComposite.compositeReason, 'Factor found: 3');
 });
 
-test('primalityTest uses Miller-Rabin for larger prime candidate', () => {
+test('primalityTest uses Baille-PSW for 64-bit-range candidates', () => {
   const largest64BitPrime = 18446744073709551557n; // 2^64 - 59
   const result = primalityTest(largest64BitPrime);
 
-  assert.equal(result.verdict, 'Probably Prime');
-  assert.equal(result.method, 'Miller-Rabin');
-  assert.ok((result.rounds ?? 0) > 0);
-  assert.ok((result.errorProbabilityExponent ?? 0) > 0);
+  assert.equal(result.verdict, 'Prime');
+  assert.equal(result.method, 'Baille-PSW');
+  assert.equal(result.rounds, 0);
+  assert.equal(result.errorProbabilityExponent, 0);
+
+  const m31 = primalityTest(2147483647n);
+  assert.equal(m31.verdict, 'Prime');
+  assert.equal(m31.method, 'Baille-PSW');
+
+  const bpswComposite = primalityTest(1000036000099n); // 1000003 * 1000033
+  assert.equal(bpswComposite.verdict, 'Composite');
+  assert.equal(bpswComposite.method, 'Baille-PSW');
 });
 
 test('primalityTest classifies 300-digit prime and composite correctly', () => {

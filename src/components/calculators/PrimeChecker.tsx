@@ -108,7 +108,7 @@ const PrimeChecker: React.FC = () => {
       </div>
 
       {computed && result ? (
-        <div className="mt-2 space-y-1 p-4 rounded-lg bg-gray-900/40 border border-gray-700">
+        <div className="mt-2 space-y-2 p-4 rounded-lg bg-gray-900/40 border border-gray-700">
           {/* <div className="text-sm text-gray-300">Details:</div> */}
           <MathText className="block text-sm text-gray-200">
             {`\\text{Method Used: ${result.method}${result.method === 'Miller-Rabin' && result.rounds ? ` (${result.rounds} rounds)` : ''}}`}
@@ -123,6 +123,13 @@ const PrimeChecker: React.FC = () => {
           result.verdict === 'Probably Prime' ? (
             <MathText className="block text-sm text-gray-200">{`\\text{Uncertainty } \\le 2^{-${result.errorProbabilityExponent ?? 0}}`}</MathText>
           ) : null}
+          {result.method === 'Baille-PSW' && result.verdict === 'Prime' ? (
+            <MathText className="block text-sm text-gray-200">
+              {
+                '\\text{No counterexample to Baille-PSW has been found for values below } 2^{64}'
+              }
+            </MathText>
+          ) : null}
           {result.method === 'Small Prime Check' &&
           result.verdict === 'Composite' ? (
             smallPrimeDivisor ? (
@@ -130,6 +137,11 @@ const PrimeChecker: React.FC = () => {
             ) : (
               <MathText className="block text-sm text-gray-200">{`\\text{${result.compositeReason ?? 'Composite'}}`}</MathText>
             )
+          ) : null}
+          {result.method === 'Baille-PSW' && result.verdict === 'Composite' ? (
+            <MathText className="block text-sm text-gray-200">
+              {'\\text{Baille-PSW test failed}'}
+            </MathText>
           ) : null}
           {result.method === 'Miller-Rabin' &&
           result.verdict === 'Composite' ? (
