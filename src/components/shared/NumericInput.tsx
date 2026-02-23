@@ -15,7 +15,7 @@ interface NumericInputProps {
   onChange: (value: string) => void;
   onEnter?: () => void;
   placeholder?: string;
-  maxLength?: number;
+  maxDigits?: number;
   minRows?: number;
   rows?: number;
 }
@@ -24,7 +24,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   label,
   value,
   placeholder = 'Enter a non-negative integer',
-  maxLength = 2000,
+  maxDigits: maxLength = 2000,
   minRows,
   rows = 4,
   onChange,
