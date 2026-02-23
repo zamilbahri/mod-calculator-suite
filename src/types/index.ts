@@ -21,9 +21,11 @@ export interface CRTSolution {
 
 export interface PrimalityCheckResult {
   isProbablePrime: boolean;
-  verdict: 'Prime' | 'Composite';
-  certaintyPercent: string;
-  method: 'Miller-Rabin' | 'BPSW';
+  verdict: 'Prime' | 'Probably Prime' | 'Composite';
+  method: 'Small Prime Check' | 'Miller-Rabin';
+  errorProbabilityExponent?: number;
+  compositeReason?: string;
+  witness?: bigint;
   rounds?: number;
 }
 

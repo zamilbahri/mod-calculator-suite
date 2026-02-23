@@ -167,7 +167,7 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
                     const v = acceptDigitsOnly(next);
                     if (v !== null) onChange(i, 'a', v);
                   }}
-                  maxLength={600}
+                  maxDigits={600}
                   onEnter={onEnter}
                 />
 
@@ -184,7 +184,7 @@ const CRTInputPanel: React.FC<CRTInputPanelProps> = ({
                     const v = acceptDigitsOnly(next);
                     if (v !== null) onChange(i, 'm', v);
                   }}
-                  maxLength={600}
+                  maxDigits={600}
                   onEnter={onEnter}
                 />
               </div>

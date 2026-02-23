@@ -75,7 +75,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             setError('');
           }}
           onEnter={computeProduct}
-          maxLength={1000}
+          maxDigits={1000}
         />
 
         <NumericInput
@@ -86,7 +86,7 @@ const MultiplyLargeNumbers: React.FC = () => {
             setError('');
           }}
           onEnter={computeProduct}
-          maxLength={1000}
+          maxDigits={1000}
         />
       </div>
 

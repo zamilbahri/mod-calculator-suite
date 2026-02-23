@@ -85,7 +85,7 @@ export function gcd(a: bigint, b: bigint): bigint {
   return x;
 }
 
-export function arePairwiseCoprime(nums: bigint[]): boolean {
+function arePairwiseCoprime(nums: bigint[]): boolean {
   for (let i = 0; i < nums.length; i++) {
     for (let j = i + 1; j < nums.length; j++) {
       if (gcd(nums[i], nums[j]) !== 1n) return false;
@@ -205,23 +205,9 @@ export function solveCRT(equations: CRTEquationParsed[]): CRTSolution {
 }
 
 // ---------- Primality Testing ----------
-const SMALL_PRIMES: bigint[] = [
-  2n,
-  3n,
-  5n,
-  7n,
-  11n,
-  13n,
-  17n,
-  19n,
-  23n,
-  29n,
-  31n,
-  37n,
-];
 
-const MR_BASE_POOL: bigint[] = [
-  2n,
+// A pool of first 101 small primes (except 2) for quick checks
+const SMALL_PRIMES: bigint[] = [
   3n,
   5n,
   7n,
@@ -261,6 +247,67 @@ const MR_BASE_POOL: bigint[] = [
   163n,
   167n,
   173n,
+  179n,
+  181n,
+  191n,
+  193n,
+  197n,
+  199n,
+  211n,
+  223n,
+  227n,
+  229n,
+  233n,
+  239n,
+  241n,
+  251n,
+  257n,
+  263n,
+  269n,
+  271n,
+  277n,
+  281n,
+  283n,
+  293n,
+  307n,
+  311n,
+  313n,
+  317n,
+  331n,
+  337n,
+  347n,
+  349n,
+  353n,
+  359n,
+  367n,
+  373n,
+  379n,
+  383n,
+  389n,
+  397n,
+  401n,
+  409n,
+  419n,
+  421n,
+  431n,
+  433n,
+  439n,
+  443n,
+  449n,
+  457n,
+  461n,
+  463n,
+  467n,
+  479n,
+  487n,
+  491n,
+  499n,
+  503n,
+  509n,
+  521n,
+  523n,
+  541n,
+  547n,
 ];
 
 // Returns the number of bits needed to represent n in binary, i.e. floor(log2(n)) + 1 for n > 0.
@@ -281,8 +328,51 @@ function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
   return { d, s };
 }
 
+function randomBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length);
+  const cryptoObj = globalThis.crypto;
+  if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
+    cryptoObj.getRandomValues(bytes);
+    return bytes;
+  }
+  for (let i = 0; i < length; i++) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return bytes;
+}
+
+// Returns a random bigint uniformly distributed in [0, upperExclusive) using rejection sampling. Assumes upperExclusive > 3.
+function randomBigIntBelow(upperExclusive: bigint): bigint {
+  if (upperExclusive <= 2n) {
+    throw new MathValidationError('n', 'must be greater than', '3');
+  }
+  // We sample in [0, upperExclusive) by generating values with exactly enough
+  // bits to cover upperExclusive - 1, then rejecting out-of-range samples.
+  const max = upperExclusive - 1n;
+  const bits = bitLength(max);
+  const bytesLen = Math.ceil(bits / 8);
+  // If bits is not byte-aligned, clear the unused high bits in the first byte.
+  // Example: bits=10 -> bytesLen=2 -> excessBits=6, so mask 0b00000011.
+  const excessBits = bytesLen * 8 - bits;
+  const topMask = 0xff >> excessBits;
+
+  while (true) {
+    const bytes = randomBytes(bytesLen);
+    // Clamp the first byte so the constructed bigint never exceeds bit width.
+    bytes[0] &= topMask;
+
+    let value = 0n;
+    // Parse big-endian bytes into a bigint: (((b0 << 8) | b1) << 8) | ...
+    for (const byte of bytes) {
+      value = (value << 8n) | BigInt(byte);
+    }
+    // Rejection sampling keeps the final distribution uniform below the bound.
+    if (value < upperExclusive) return value;
+  }
+}
+
 // Returns true if n passes the Miller-Rabin test for base a.
-export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
+function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   if (n < 2n) return false;
   if (n === 2n || n === 3n) return true;
   if ((n & 1n) === 0n) return false;
@@ -305,52 +395,44 @@ export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   return false;
 }
 
-export function millerRabinCertaintyPercent(
-  iterations: number,
-  decimals = 30,
-): string {
-  const scale = 10n ** BigInt(decimals);
-  const denom = 4n ** BigInt(iterations); // exact
-  const hundredScaled = 100n * scale;
-
-  // floor(100 * (1 - 1/denom) * scale)
-  const certaintyScaled = hundredScaled - hundredScaled / denom;
-
-  const intPart = certaintyScaled / scale;
-  const fracPart = (certaintyScaled % scale).toString().padStart(decimals, '0');
-
-  return `${intPart}.${fracPart}%`;
-}
-
-export function isMillerRabinProbablePrime(
+// Returns true if n is a probable prime with the given number of Miller-Rabin iterations.
+// Assume small primes are already checked before calling this function
+function isMillerRabinProbablePrime(
   n: bigint,
   iterations = 24,
-): boolean {
-  if (n < 2n) return false;
-
-  // Quick rejection: check against small primes
-  for (const p of SMALL_PRIMES) {
-    if (n === p) return true;
-    if (n % p === 0n) return false;
-  }
-
-  if ((n & 1n) === 0n) return false;
-
+): { isProbablePrime: boolean; witness?: bigint } {
   // Run Miller-Rabin test with multiple bases for higher confidence
-  // With k iterations, error probability is at most 4^(-k)
-  for (let i = 0; i < iterations; i++) {
-    const baseCandidate =
-      i < MR_BASE_POOL.length ? MR_BASE_POOL[i] : 2n + 2n * BigInt(i);
-    const a = baseCandidate % n;
-    if (a === 0n || a === 1n) continue;
-    if (!isStrongProbablePrimeForBase(n, a)) return false;
+  // Bases are sampled uniformly from [2, n-2] and de-duplicated per run.
+  const usedBases = new Set<bigint>();
+  const maxUniqueBases = n - 3n;
+  const rounds = Math.min(
+    iterations,
+    maxUniqueBases > BigInt(Number.MAX_SAFE_INTEGER)
+      ? iterations
+      : Number(maxUniqueBases),
+  );
+
+  for (let i = 0; i < rounds; i++) {
+    let a: bigint;
+    do {
+      a = 2n + randomBigIntBelow(n - 3n); // uniform in [2, n-2]
+    } while (usedBases.has(a));
+    usedBases.add(a);
+
+    if (!isStrongProbablePrimeForBase(n, a)) {
+      return { isProbablePrime: false, witness: a };
+    }
   }
 
-  return true;
+  return { isProbablePrime: true };
+}
+
+function millerRabinErrorProbabilityExponent(iterations: number): number {
+  // (1/4)^k = 2^(-2k), so b = 2k in error <= 2^-b.
+  return 2 * iterations;
 }
 
 function millerRabinIterationsForBitLength(bits: number): number {
-  if (bits <= 64) return 12;
   if (bits <= 128) return 16;
   if (bits <= 256) return 24;
   if (bits <= 512) return 32;
@@ -359,13 +441,42 @@ function millerRabinIterationsForBitLength(bits: number): number {
 }
 
 export function primalityCheck(n: bigint): PrimalityCheckResult {
+  const exactPrime = (): PrimalityCheckResult => ({
+    isProbablePrime: true,
+    verdict: 'Prime',
+    method: 'Small Prime Check',
+    errorProbabilityExponent: 0,
+    rounds: 0,
+  });
+  const exactComposite = (reason: string): PrimalityCheckResult => ({
+    isProbablePrime: false,
+    verdict: 'Composite',
+    method: 'Small Prime Check',
+    compositeReason: reason,
+    rounds: 0,
+  });
+
+  if (n < 2n) return exactComposite('n < 2');
+  if (n === 2n) return exactPrime();
+  if ((n & 1n) === 0n) return exactComposite('Factor found: 2');
+
+  for (const p of SMALL_PRIMES) {
+    if (n === p) return exactPrime();
+    if (n % p === 0n) return exactComposite(`Factor found: ${p.toString()}`);
+  }
+
   const rounds = millerRabinIterationsForBitLength(bitLength(n));
-  const primeLike = isMillerRabinProbablePrime(n, rounds);
+  const mrResult = isMillerRabinProbablePrime(n, rounds);
+  const primeLike = mrResult.isProbablePrime;
   return {
     isProbablePrime: primeLike,
-    verdict: primeLike ? 'Prime' : 'Composite',
-    certaintyPercent: primeLike ? millerRabinCertaintyPercent(rounds) : '100%',
+    verdict: primeLike ? 'Probably Prime' : 'Composite',
     method: 'Miller-Rabin',
-    rounds,
+    errorProbabilityExponent: primeLike
+      ? millerRabinErrorProbabilityExponent(rounds)
+      : undefined,
+    compositeReason: primeLike ? undefined : 'Miller-Rabin witness found',
+    witness: primeLike ? undefined : mrResult.witness,
+    rounds: rounds,
   };
 }
