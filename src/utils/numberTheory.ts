@@ -140,7 +140,8 @@ export function modPow(a: bigint, n: bigint, m: bigint): bigint {
 
   if (m === 1n) return 0n; // a^n mod 1 is always 0
 
-  let base = ((a % m) + m) % m;
+  let base = a % m; // ensure base is in [0, m-1]
+  if (base < 0n) base += m; // account for negative a (unlikely due to input sanitization)
 
   let exp = n;
   let result = 1n;
@@ -429,6 +430,13 @@ function isMillerRabinProbablePrime(
 
 const TWO_POW_64 = 1n << 64n;
 
+export type PrimalityMethodSelection = 'Auto' | 'Miller-Rabin' | 'Baillie-PSW';
+
+export interface PrimalityCheckOptions {
+  method?: PrimalityMethodSelection;
+  millerRabinRounds?: number;
+}
+
 function isPerfectSquare(n: bigint): boolean {
   if (n < 0n) return false;
   if (n < 2n) return true;
@@ -561,15 +569,16 @@ function millerRabinErrorProbabilityExponent(iterations: number): number {
   // (1/4)^k = 2^(-2k), so b = 2k in error <= 2^-b.
   return 2 * iterations;
 }
+export function primalityCheck(
+  n: bigint,
+  options: PrimalityCheckOptions | number = 24,
+): PrimalityCheckResult {
+  const method =
+    typeof options === 'number' ? 'Auto' : (options.method ?? 'Auto');
+  const roundsInput =
+    typeof options === 'number' ? options : (options.millerRabinRounds ?? 24);
+  const mrIterations = Math.max(1, Math.floor(roundsInput));
 
-function millerRabinIterationsForBitLength(bits: number): number {
-  if (bits <= 128) return 32;
-  if (bits <= 256) return 40;
-  if (bits <= 1024) return 48;
-  return 56;
-}
-
-export function primalityCheck(n: bigint): PrimalityCheckResult {
   const exactPrime = (): PrimalityCheckResult => ({
     isProbablePrime: true,
     verdict: 'Prime',
@@ -594,11 +603,15 @@ export function primalityCheck(n: bigint): PrimalityCheckResult {
     if (n % p === 0n) return exactComposite(`Factor found: ${p.toString()}`);
   }
 
-  if (n < TWO_POW_64) {
+  if (method === 'Baillie-PSW' || (method === 'Auto' && n < TWO_POW_64)) {
     const bpswPrime = isBPSWProbablePrime(n);
     return {
       isProbablePrime: bpswPrime,
-      verdict: bpswPrime ? 'Prime' : 'Composite',
+      verdict: bpswPrime
+        ? n < TWO_POW_64
+          ? 'Prime'
+          : 'Probably Prime'
+        : 'Composite',
       method: 'Baillie-PSW',
       errorProbabilityExponent: bpswPrime ? 0 : undefined,
       compositeReason: bpswPrime ? undefined : 'BPSW test failed',
@@ -606,7 +619,7 @@ export function primalityCheck(n: bigint): PrimalityCheckResult {
     };
   }
 
-  const rounds = millerRabinIterationsForBitLength(bitLength(n));
+  const rounds = mrIterations;
   const mrResult = isMillerRabinProbablePrime(n, rounds);
   const primeLike = mrResult.isProbablePrime;
   return {
