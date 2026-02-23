@@ -48,9 +48,8 @@ export function validatePrimeGenerationRequest(
     if (size < 2) {
       return 'Bit size must be at least 2.';
     }
-    return null;
   }
-  if (size > MAX_GENERATED_PRIME_DIGITS) {
+  if (sizeType === 'digits' && size > MAX_GENERATED_PRIME_DIGITS) {
     return `Maximum size is ${MAX_GENERATED_PRIME_DIGITS} digits.`;
   }
 
@@ -141,6 +140,38 @@ export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
         millerRabinRounds,
       ),
     );
+  }
+  return primes;
+}
+
+export async function generatePrimesWithProgress(
+  options: PrimeGenerationOptions,
+  onProgress?: (completed: number, total: number, prime: bigint) => void,
+): Promise<bigint[]> {
+  const count = options.count ?? 1;
+  const method = options.method ?? 'Auto';
+  const millerRabinRounds = options.millerRabinRounds ?? 24;
+
+  const validationError = validatePrimeGenerationRequest(
+    options.size,
+    options.sizeType,
+    count,
+  );
+  if (validationError) {
+    throw new MathValidationError('prime generation', validationError);
+  }
+
+  const primes: bigint[] = [];
+  for (let i = 0; i < count; i++) {
+    const prime = generateOnePrime(
+      options.size,
+      options.sizeType,
+      method,
+      millerRabinRounds,
+    );
+    primes.push(prime);
+    onProgress?.(i + 1, count, prime);
+    await new Promise((r) => setTimeout(r, 0));
   }
   return primes;
 }

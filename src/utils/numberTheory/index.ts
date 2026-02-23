@@ -8,6 +8,8 @@ export { solveCRT } from './crt';
 export { primalityCheck } from './primality/checkPrime';
 export {
   generatePrimes,
+  generatePrimesWithProgress,
+  getPrimeGenerationWarnThreshold,
   validatePrimeGenerationRequest,
 } from './primality/generatePrime';
 export {
