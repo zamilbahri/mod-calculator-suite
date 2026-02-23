@@ -27,6 +27,8 @@ const PrimeChecker: React.FC = () => {
   >('Auto');
   const [mrRounds, setMrRounds] = useState(24);
   const [recommendation, setRecommendation] = useState('');
+  const [testMethodOpen, setTestMethodOpen] = useState(false);
+  const [mrRoundsOpen, setMrRoundsOpen] = useState(false);
 
   useEffect(() => {
     const value = n.trim();
@@ -105,19 +107,32 @@ const PrimeChecker: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-xs text-gray-300">
               <span className="italic">Primality Test:</span>
-              <select
-                value={testMethod}
-                onChange={(e) =>
-                  setTestMethod(
-                    e.target.value as 'Auto' | 'Miller-Rabin' | 'Baillie-PSW',
-                  )
-                }
-                className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100"
-              >
-                <option value="Auto">Auto</option>
-                <option value="Miller-Rabin">Miller-Rabin</option>
-                <option value="Baillie-PSW">Baillie-PSW</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={testMethod}
+                  onMouseDown={() => setTestMethodOpen((prev) => !prev)}
+                  onBlur={() => setTestMethodOpen(false)}
+                  onChange={(e) => {
+                    setTestMethod(
+                      e.target.value as 'Auto' | 'Miller-Rabin' | 'Baillie-PSW',
+                    );
+                    setTestMethodOpen(false);
+                  }}
+                  className="appearance-none rounded border border-gray-700 bg-gray-900 px-2 py-1 pr-8 text-sm text-gray-100 transition-colors duration-200 ease-out focus:border-gray-500"
+                >
+                  <option value="Auto">Auto</option>
+                  <option value="Miller-Rabin">Miller-Rabin</option>
+                  <option value="Baillie-PSW">Baillie-PSW</option>
+                </select>
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 transition-transform duration-200 ease-out ${
+                    testMethodOpen ? 'rotate-180' : ''
+                  }`}
+                >
+                  ▾
+                </span>
+              </div>
             </label>
 
             <label
@@ -126,18 +141,33 @@ const PrimeChecker: React.FC = () => {
               }`}
             >
               <span className="italic">Miller-Rabin Rounds:</span>
-              <select
-                value={mrRounds}
-                onChange={(e) => setMrRounds(Number(e.target.value))}
-                disabled={testMethod === 'Baillie-PSW'}
-                className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {[16, 24, 32, 40, 48, 56, 64].map((rounds) => (
-                  <option key={rounds} value={rounds}>
-                    {rounds}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={mrRounds}
+                  onMouseDown={() => setMrRoundsOpen((prev) => !prev)}
+                  onBlur={() => setMrRoundsOpen(false)}
+                  onChange={(e) => {
+                    setMrRounds(Number(e.target.value));
+                    setMrRoundsOpen(false);
+                  }}
+                  disabled={testMethod === 'Baillie-PSW'}
+                  className="appearance-none rounded border border-gray-700 bg-gray-900 px-2 py-1 pr-8 text-sm text-gray-100 transition-colors duration-200 ease-out focus:border-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {[16, 24, 32, 40, 48, 56, 64].map((rounds) => (
+                    <option key={rounds} value={rounds}>
+                      {rounds}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 transition-transform duration-200 ease-out ${
+                    mrRoundsOpen ? 'rotate-180' : ''
+                  }`}
+                >
+                  ▾
+                </span>
+              </div>
             </label>
           </div>
         </div>
