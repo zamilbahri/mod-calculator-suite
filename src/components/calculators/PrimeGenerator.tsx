@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import NumericOutput from '../shared/NumericOutput';
 import {
   errorBoxClass,
@@ -7,13 +7,53 @@ import {
   secondaryButtonClass,
 } from '../shared/ui';
 import {
-  generatePrimesWithProgress,
   getPrimeGenerationWarnThreshold,
   MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
   validatePrimeGenerationRequest,
   type PrimeSizeType,
+  type PrimeGenerationOptions,
 } from '../../utils/numberTheory';
+
+type WorkerProgressMessage = {
+  type: 'progress';
+  jobId: number;
+  completed: number;
+  total: number;
+  prime: string;
+};
+
+type WorkerCompletedMessage = {
+  type: 'completed';
+  jobId: number;
+  elapsedMs: number;
+  primes: string[];
+};
+
+type WorkerHeartbeatMessage = {
+  type: 'heartbeat';
+  jobId: number;
+  primeIndex: number;
+  total: number;
+  attempts: number;
+};
+
+type WorkerErrorMessage = {
+  type: 'error';
+  jobId: number;
+  message: string;
+};
+
+type WorkerResponse =
+  | WorkerProgressMessage
+  | WorkerHeartbeatMessage
+  | WorkerCompletedMessage
+  | WorkerErrorMessage;
+
+const createPrimeGeneratorWorker = (): Worker =>
+  new Worker(new URL('../../workers/primeGenerator.worker.ts', import.meta.url), {
+    type: 'module',
+  });
 
 const PrimeGenerator: React.FC = () => {
   const [size, setSize] = useState('');
@@ -24,6 +64,57 @@ const PrimeGenerator: React.FC = () => {
   const [primes, setPrimes] = useState<string[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [completionSummary, setCompletionSummary] = useState<string | null>(null);
+  const [heartbeat, setHeartbeat] = useState<{ primeIndex: number; attempts: number } | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const jobIdRef = useRef(0);
+
+  const initWorker = () => {
+    const worker = createPrimeGeneratorWorker();
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      const msg = event.data;
+      if (msg.jobId !== jobIdRef.current) return;
+
+      if (msg.type === 'progress') {
+        setProgress({ completed: msg.completed, total: msg.total });
+        setPrimes((prev) => [...prev, msg.prime]);
+        setHeartbeat(null);
+        return;
+      }
+
+      if (msg.type === 'heartbeat') {
+        setHeartbeat({ primeIndex: msg.primeIndex, attempts: msg.attempts });
+        // eslint-disable-next-line no-console
+        console.log(
+          `[PrimeGenerator worker] prime ${msg.primeIndex}/${msg.total} attempts=${msg.attempts}`,
+        );
+        return;
+      }
+
+      if (msg.type === 'completed') {
+        setWorking(false);
+        setHeartbeat(null);
+        if (msg.primes.length > 0) {
+          setPrimes((prev) => (prev.length > 0 ? prev : msg.primes));
+        }
+        setCompletionSummary(
+          `${msg.primes.length} primes generated in ${(msg.elapsedMs / 1000).toFixed(2)} seconds.`,
+        );
+        return;
+      }
+
+      setWorking(false);
+      setError(msg.message);
+    };
+    workerRef.current = worker;
+  };
+
+  useEffect(() => {
+    initWorker();
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
 
   const sizeValue = useMemo(() => Number.parseInt(size, 10), [size]);
   const countValue = useMemo(() => Number.parseInt(count, 10), [count]);
@@ -58,10 +149,11 @@ const PrimeGenerator: React.FC = () => {
     return null;
   }, [liveError, sizeType, sizeValue, countValue]);
 
-  const generate = async () => {
+  const generate = () => {
     setError(null);
     setPrimes([]);
     setCompletionSummary(null);
+    setHeartbeat(null);
     setProgress({ completed: 0, total: countValue || 0 });
 
     if (!Number.isInteger(sizeValue) || sizeValue <= 0) {
@@ -82,44 +174,44 @@ const PrimeGenerator: React.FC = () => {
       return;
     }
 
-    setWorking(true);
-    try {
-      await new Promise((r) => setTimeout(r, 0));
-      const start = performance.now();
-      const generated = await generatePrimesWithProgress(
-        {
-          size: sizeValue,
-          sizeType,
-          count: countValue,
-        },
-        (completed, total, prime) => {
-          setProgress({ completed, total });
-          setPrimes((prev) => [...prev, prime.toString()]);
-        },
-      );
-      const elapsedSeconds = (performance.now() - start) / 1000;
-      setCompletionSummary(
-        `${generated.length} primes generated in ${elapsedSeconds.toFixed(2)} seconds.`,
-      );
-    } catch (e) {
-      if (e instanceof Error) {
-        setError(e.message);
-      } else {
-        setError('Failed to generate primes.');
-      }
-    } finally {
-      setWorking(false);
+    const options: PrimeGenerationOptions = {
+      size: sizeValue,
+      sizeType,
+      count: countValue,
+    };
+
+    if (!workerRef.current) initWorker();
+    if (!workerRef.current) {
+      setError('Failed to initialize worker.');
+      return;
     }
+
+    const nextJobId = jobIdRef.current + 1;
+    jobIdRef.current = nextJobId;
+    setWorking(true);
+    workerRef.current.postMessage({
+      type: 'generate',
+      jobId: nextJobId,
+      options,
+    });
   };
 
   const clear = () => {
+    if (working && workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+      initWorker();
+    }
+
     setSize('');
     setSizeType('bits');
     setCount('1');
     setError(null);
     setPrimes([]);
     setCompletionSummary(null);
+    setHeartbeat(null);
     setProgress({ completed: 0, total: 0 });
+    setWorking(false);
   };
 
   return (
@@ -187,9 +279,16 @@ const PrimeGenerator: React.FC = () => {
           Clear
         </button>
         {working ? (
-          <p className="text-sm text-gray-300">
-            Generating prime ({progress.completed}/{progress.total || countValue || 0})
-          </p>
+          <div className="text-sm text-gray-300">
+            <p>
+              Generating prime ({progress.completed}/{progress.total || countValue || 0})
+            </p>
+            {heartbeat ? (
+              <p className="text-xs text-gray-400">
+                Prime {heartbeat.primeIndex} attempts: {heartbeat.attempts}
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {!working && completionSummary ? (
           <p className="text-sm text-gray-300">{completionSummary}</p>

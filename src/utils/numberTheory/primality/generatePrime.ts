@@ -104,8 +104,15 @@ function generateOnePrime(
   sizeType: PrimeSizeType,
   method: PrimalityMethodSelection,
   millerRabinRounds: number,
+  onAttempt?: (attempts: number) => void,
 ): bigint {
+  let attempts = 0;
   while (true) {
+    attempts++;
+    if (onAttempt && attempts % 256 === 0) {
+      onAttempt(attempts);
+    }
+
     const candidate =
       sizeType === 'bits'
         ? randomOddCandidateByBits(size)
@@ -147,6 +154,7 @@ export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
 export async function generatePrimesWithProgress(
   options: PrimeGenerationOptions,
   onProgress?: (completed: number, total: number, prime: bigint) => void,
+  onHeartbeat?: (primeIndex: number, total: number, attempts: number) => void,
 ): Promise<bigint[]> {
   const count = options.count ?? 1;
   const method = options.method ?? 'Auto';
@@ -168,6 +176,7 @@ export async function generatePrimesWithProgress(
       options.sizeType,
       method,
       millerRabinRounds,
+      (attempts) => onHeartbeat?.(i + 1, count, attempts),
     );
     primes.push(prime);
     onProgress?.(i + 1, count, prime);
