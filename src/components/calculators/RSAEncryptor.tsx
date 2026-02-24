@@ -69,6 +69,7 @@ type ComputedKeySnapshot = {
   phi: string;
   d: string;
 };
+type FactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 
 type Mode = 'encrypt' | 'decrypt';
 type EncodingMode = 'fixed-width' | 'radix';
@@ -135,6 +136,12 @@ const RSAEncryptor: React.FC = () => {
   const [recoverElapsedMs, setRecoverElapsedMs] = useState<number | null>(null);
   const [recoverAttemptCount, setRecoverAttemptCount] = useState(0);
   const [recoverLiveElapsedMs, setRecoverLiveElapsedMs] = useState(0);
+  const [pFactorCheck, setPFactorCheck] = useState<FactorCheckVerdict | null>(
+    null,
+  );
+  const [qFactorCheck, setQFactorCheck] = useState<FactorCheckVerdict | null>(
+    null,
+  );
 
   const recoverWorkerRef = useRef<Worker | null>(null);
   const recoverJobIdRef = useRef(0);
@@ -163,7 +170,26 @@ const RSAEncryptor: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [recoverWorking]);
 
+  useEffect(() => {
+    setPFactorCheck(null);
+    setQFactorCheck(null);
+  }, [computedKeySnapshot]);
+
   const hasPAndQ = pInput.trim() !== '' && qInput.trim() !== '';
+
+  const checkRecoveredFactor = (factor: 'p' | 'q') => {
+    if (!computedKeySnapshot) return;
+    try {
+      const value =
+        factor === 'p' ? computedKeySnapshot.p : computedKeySnapshot.q;
+      const verdict = primalityCheck(BigInt(value)).verdict as FactorCheckVerdict;
+      if (factor === 'p') setPFactorCheck(verdict);
+      else setQFactorCheck(verdict);
+    } catch {
+      if (factor === 'p') setPFactorCheck(null);
+      else setQFactorCheck(null);
+    }
+  };
 
   const buildAlphabetEncoding = useCallback((): AlphabetEncoding => {
     const charToValue = new Map<string, bigint>();
@@ -782,22 +808,76 @@ const RSAEncryptor: React.FC = () => {
       {computedKeySnapshot ? (
         <div className="mt-4 space-y-3">
           <div className="grid gap-4 md:grid-cols-2">
-            <NumericOutput
-              label={
-                <span>
-                  Recovered factor <MathText className="inline">p</MathText>
-                </span>
-              }
-              value={computedKeySnapshot.p}
-            />
-            <NumericOutput
-              label={
-                <span>
-                  Recovered factor <MathText className="inline">q</MathText>
-                </span>
-              }
-              value={computedKeySnapshot.q}
-            />
+            {mode === 'decrypt' ? (
+              <div className="space-y-1">
+                <NumericOutput
+                  label={
+                    <span>
+                      Recovered factor <MathText className="inline">p</MathText>
+                    </span>
+                  }
+                  value={computedKeySnapshot.p}
+                />
+                <div className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => checkRecoveredFactor('p')}
+                    className="rounded border border-gray-600 px-2 py-0.5 text-xs text-gray-200 hover:bg-gray-700"
+                  >
+                    Check primality
+                  </button>
+                  {pFactorCheck ? (
+                    <p
+                      className={`inline-flex items-center gap-2 text-sm font-semibold ${
+                        pFactorCheck === 'Composite'
+                          ? 'text-amber-300'
+                          : 'text-green-300'
+                      }`}
+                    >
+                      {pFactorCheck === 'Composite' ? null : (
+                        <span aria-hidden="true">✓</span>
+                      )}
+                      {pFactorCheck}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {mode === 'decrypt' ? (
+              <div className="space-y-1">
+                <NumericOutput
+                  label={
+                    <span>
+                      Recovered factor <MathText className="inline">q</MathText>
+                    </span>
+                  }
+                  value={computedKeySnapshot.q}
+                />
+                <div className="inline-flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => checkRecoveredFactor('q')}
+                    className="rounded border border-gray-600 px-2 py-0.5 text-xs text-gray-200 hover:bg-gray-700"
+                  >
+                    Check primality
+                  </button>
+                  {qFactorCheck ? (
+                    <p
+                      className={`inline-flex items-center gap-2 text-sm font-semibold ${
+                        qFactorCheck === 'Composite'
+                          ? 'text-amber-300'
+                          : 'text-green-300'
+                      }`}
+                    >
+                      {qFactorCheck === 'Composite' ? null : (
+                        <span aria-hidden="true">✓</span>
+                      )}
+                      {qFactorCheck}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
             <NumericOutput
               label={<MathText>{`\\varphi(n)`}</MathText>}
               value={computedKeySnapshot.phi}
