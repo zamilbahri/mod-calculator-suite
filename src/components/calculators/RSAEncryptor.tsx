@@ -689,7 +689,7 @@ const RSAEncryptor: React.FC = () => {
         <NumericInput
           label={
             <span>
-              Prime <MathText className="inline">p</MathText>
+              Prime <MathText>p</MathText>
             </span>
           }
           value={pInput}
@@ -701,7 +701,7 @@ const RSAEncryptor: React.FC = () => {
         <NumericInput
           label={
             <span>
-              Prime <MathText className="inline">q</MathText>
+              Prime <MathText>q</MathText>
             </span>
           }
           value={qInput}
@@ -713,7 +713,7 @@ const RSAEncryptor: React.FC = () => {
         <NumericInput
           label={
             <span>
-              Public exponent <MathText className="inline">e</MathText>
+              Public exponent <MathText>e</MathText>
             </span>
           }
           value={eInput}
@@ -725,7 +725,7 @@ const RSAEncryptor: React.FC = () => {
         <NumericInput
           label={
             <span>
-              Modulus <MathText className="inline">n</MathText>
+              Modulus <MathText>n</MathText>
             </span>
           }
           value={nInput}
@@ -793,8 +793,8 @@ const RSAEncryptor: React.FC = () => {
       {mode === 'decrypt' ? (
         <p className="mt-1 text-xs italic text-gray-400">
           Recover primes is only enabled for{' '}
-          <MathText className="inline">{`n < 2^{${MAX_RECOVERY_MODULUS_BITS}}`}</MathText>
-          .
+          <MathText>{`n < 2^{${MAX_RECOVERY_MODULUS_BITS}}`}</MathText>. May
+          take longer for unbalanced <MathText>N</MathText>.
         </p>
       ) : null}
       {error ? <div className={errorBoxClass}>{error}</div> : null}
@@ -807,7 +807,7 @@ const RSAEncryptor: React.FC = () => {
                 <NumericOutput
                   label={
                     <span>
-                      Recovered factor <MathText className="inline">p</MathText>
+                      Recovered factor <MathText>p</MathText>
                     </span>
                   }
                   value={computedKeySnapshot.p}
@@ -842,7 +842,7 @@ const RSAEncryptor: React.FC = () => {
                 <NumericOutput
                   label={
                     <span>
-                      Recovered factor <MathText className="inline">q</MathText>
+                      Recovered factor <MathText>q</MathText>
                     </span>
                   }
                   value={computedKeySnapshot.q}
