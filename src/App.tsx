@@ -7,6 +7,7 @@ import GCDCalculator from './components/calculators/GCDCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
 import PrimeChecker from './components/calculators/PrimeChecker';
+import PrimeGenerator from './components/calculators/PrimeGenerator';
 
 const App: React.FC = () => {
   return (
@@ -97,6 +98,18 @@ const App: React.FC = () => {
             }
           >
             <PrimeChecker />
+          </CalculatorCard>
+
+          <CalculatorCard
+            title="Prime Generator"
+            subtitle={
+              <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                <span>Generate prime numbers by</span>
+                <span>bit-size or digit-size.</span>
+              </span>
+            }
+          >
+            <PrimeGenerator />
           </CalculatorCard>
         </div>
       </div>

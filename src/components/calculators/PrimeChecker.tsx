@@ -185,7 +185,7 @@ const PrimeChecker: React.FC = () => {
           placeholder="Enter a non-negative integer"
           minRows={1}
           rows={4}
-          maxDigits={1000}
+          maxDigits={1250}
         />
       </div>
 
@@ -205,7 +205,7 @@ const PrimeChecker: React.FC = () => {
           {working ? (
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
               <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
-              Computing...
+              Checking...
             </p>
           ) : null}
           {!working && computed && result ? (

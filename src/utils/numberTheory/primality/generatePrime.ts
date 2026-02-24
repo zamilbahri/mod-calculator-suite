@@ -48,16 +48,15 @@ export function validatePrimeGenerationRequest(
     if (size < 2) {
       return 'Bit size must be at least 2.';
     }
-    return null;
   }
-  if (size > MAX_GENERATED_PRIME_DIGITS) {
+  if (sizeType === 'digits' && size > MAX_GENERATED_PRIME_DIGITS) {
     return `Maximum size is ${MAX_GENERATED_PRIME_DIGITS} digits.`;
   }
 
   const bits = estimatedBitsForSize(size, sizeType);
   const policy = getPrimeGenerationCountPolicy(bits);
   if (!policy) {
-    return `Prime size must be at most ${MAX_GENERATED_PRIME_BITS} bits.`;
+    return `Prime size must be at most ${MAX_GENERATED_PRIME_BITS} bits (~1233 digits).`;
   }
   if (count > policy.maxCount) {
     return `Maximum number of generated primes at this size is ${policy.maxCount}.`;
@@ -105,8 +104,15 @@ function generateOnePrime(
   sizeType: PrimeSizeType,
   method: PrimalityMethodSelection,
   millerRabinRounds: number,
+  onAttempt?: (attempts: number) => void,
 ): bigint {
+  let attempts = 0;
   while (true) {
+    attempts++;
+    if (onAttempt && attempts % 32 === 0) {
+      onAttempt(attempts);
+    }
+
     const candidate =
       sizeType === 'bits'
         ? randomOddCandidateByBits(size)
@@ -141,6 +147,40 @@ export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
         millerRabinRounds,
       ),
     );
+  }
+  return primes;
+}
+
+export async function generatePrimesWithProgress(
+  options: PrimeGenerationOptions,
+  onProgress?: (completed: number, total: number, prime: bigint) => void,
+  onHeartbeat?: (primeIndex: number, total: number, attempts: number) => void,
+): Promise<bigint[]> {
+  const count = options.count ?? 1;
+  const method = options.method ?? 'Auto';
+  const millerRabinRounds = options.millerRabinRounds ?? 24;
+
+  const validationError = validatePrimeGenerationRequest(
+    options.size,
+    options.sizeType,
+    count,
+  );
+  if (validationError) {
+    throw new MathValidationError('prime generation', validationError);
+  }
+
+  const primes: bigint[] = [];
+  for (let i = 0; i < count; i++) {
+    const prime = generateOnePrime(
+      options.size,
+      options.sizeType,
+      method,
+      millerRabinRounds,
+      (attempts) => onHeartbeat?.(i + 1, count, attempts),
+    );
+    primes.push(prime);
+    onProgress?.(i + 1, count, prime);
+    await new Promise((r) => setTimeout(r, 0));
   }
   return primes;
 }

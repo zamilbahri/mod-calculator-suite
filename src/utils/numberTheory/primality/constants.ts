@@ -12,7 +12,7 @@ export const PRIME_GENERATION_COUNT_POLICIES: PrimeGenerationCountPolicy[] = [
   { maxBits: 1536, maxCount: 10, warnAt: 11 }, // don't display warning if less than 1536 bits
   { maxBits: 2048, maxCount: 10, warnAt: 5 },
   { maxBits: 3072, maxCount: 4, warnAt: 2 },
-  { maxBits: 4096, maxCount: 2, warnAt: 1 },
+  { maxBits: 4096, maxCount: 4, warnAt: 1 },
 ];
 
 export const SMALL_PRIMES: bigint[] = [
