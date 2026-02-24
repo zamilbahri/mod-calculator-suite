@@ -56,7 +56,7 @@ export function validatePrimeGenerationRequest(
   const bits = estimatedBitsForSize(size, sizeType);
   const policy = getPrimeGenerationCountPolicy(bits);
   if (!policy) {
-    return `Prime size must be at most ${MAX_GENERATED_PRIME_BITS} bits.`;
+    return `Prime size must be at most ${MAX_GENERATED_PRIME_BITS} bits (~1233 digits).`;
   }
   if (count > policy.maxCount) {
     return `Maximum number of generated primes at this size is ${policy.maxCount}.`;
@@ -109,7 +109,7 @@ function generateOnePrime(
   let attempts = 0;
   while (true) {
     attempts++;
-    if (onAttempt && attempts % 256 === 0) {
+    if (onAttempt && attempts % 32 === 0) {
       onAttempt(attempts);
     }
 

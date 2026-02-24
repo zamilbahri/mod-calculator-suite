@@ -11,8 +11,8 @@ import {
   MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
   validatePrimeGenerationRequest,
-  type PrimeSizeType,
   type PrimeGenerationOptions,
+  type PrimeSizeType,
 } from '../../utils/numberTheory';
 
 type WorkerProgressMessage = {
@@ -53,15 +53,14 @@ type WorkerResponse =
 const createPrimeGeneratorWorker = (): Worker =>
   new Worker(
     new URL('../../workers/primeGenerator.worker.ts', import.meta.url),
-    {
-      type: 'module',
-    },
+    { type: 'module' },
   );
 
 const PrimeGenerator: React.FC = () => {
   const [size, setSize] = useState('');
   const [sizeType, setSizeType] = useState<PrimeSizeType>('bits');
   const [count, setCount] = useState('1');
+  const [threads, setThreads] = useState('1');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [primes, setPrimes] = useState<string[]>([]);
@@ -69,63 +68,46 @@ const PrimeGenerator: React.FC = () => {
   const [completionSummary, setCompletionSummary] = useState<string | null>(
     null,
   );
-  const [heartbeat, setHeartbeat] = useState<{
-    primeIndex: number;
-    attempts: number;
-  } | null>(null);
-  const workerRef = useRef<Worker | null>(null);
+  const [attemptMetrics, setAttemptMetrics] = useState({
+    total: 0,
+    perSecond: 0,
+  });
+
+  const workersRef = useRef<Worker[]>([]);
+  const workerJobIdRef = useRef(new Map<Worker, number>());
   const jobIdRef = useRef(0);
-
-  const initWorker = () => {
-    const worker = createPrimeGeneratorWorker();
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
-      const msg = event.data;
-      if (msg.jobId !== jobIdRef.current) return;
-
-      if (msg.type === 'progress') {
-        setProgress({ completed: msg.completed, total: msg.total });
-        setPrimes((prev) => [...prev, msg.prime]);
-        setHeartbeat(null);
-        return;
-      }
-
-      if (msg.type === 'heartbeat') {
-        setHeartbeat({ primeIndex: msg.primeIndex, attempts: msg.attempts });
-        // eslint-disable-next-line no-console
-        console.log(
-          `[PrimeGenerator worker] prime ${msg.primeIndex}/${msg.total} attempts=${msg.attempts}`,
-        );
-        return;
-      }
-
-      if (msg.type === 'completed') {
-        setWorking(false);
-        setHeartbeat(null);
-        if (msg.primes.length > 0) {
-          setPrimes((prev) => (prev.length > 0 ? prev : msg.primes));
-        }
-        setCompletionSummary(
-          `${msg.primes.length} primes generated in ${(msg.elapsedMs / 1000).toFixed(2)} seconds.`,
-        );
-        return;
-      }
-
-      setWorking(false);
-      setError(msg.message);
-    };
-    workerRef.current = worker;
-  };
-
-  useEffect(() => {
-    initWorker();
-    return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
-    };
-  }, []);
+  const runIdRef = useRef(0);
+  const runStartedAtRef = useRef(0);
+  const targetCountRef = useRef(0);
+  const foundCountRef = useRef(0);
+  const foundSetRef = useRef(new Set<string>());
+  const totalAttemptsRef = useRef(0);
+  const lastUiMetricsUpdateRef = useRef(0);
 
   const sizeValue = useMemo(() => Number.parseInt(size, 10), [size]);
   const countValue = useMemo(() => Number.parseInt(count, 10), [count]);
+  const threadsValue = useMemo(() => Number.parseInt(threads, 10), [threads]);
+
+  const maxThreads = useMemo(() => {
+    // const hc = navigator.hardwareConcurrency ?? 4;
+    // return Math.max(1, Math.min(8, hc - 1));
+    // return Math.max(1, hc - 1);
+    return navigator.hardwareConcurrency ?? 4;
+  }, []);
+  const recommendedThreads = useMemo(
+    () => Math.max(1, Math.floor(maxThreads / 2)),
+    [maxThreads],
+  );
+
+  const terminateWorkers = () => {
+    for (const worker of workersRef.current) worker.terminate();
+    workersRef.current = [];
+    workerJobIdRef.current.clear();
+  };
+
+  useEffect(() => {
+    return () => terminateWorkers();
+  }, []);
 
   const liveError = useMemo(() => {
     if (!size) return null;
@@ -142,8 +124,24 @@ const PrimeGenerator: React.FC = () => {
     if (!Number.isInteger(countValue) || countValue <= 0) {
       return 'Number of primes must be a positive integer.';
     }
+    if (!threads) return null;
+    if (!Number.isInteger(threadsValue) || threadsValue < 1) {
+      return 'Thread count must be a positive integer.';
+    }
+    if (threadsValue > maxThreads) {
+      return `Maximum thread count is ${maxThreads}.`;
+    }
     return validatePrimeGenerationRequest(sizeValue, sizeType, countValue);
-  }, [size, sizeType, count, sizeValue, countValue]);
+  }, [
+    size,
+    sizeType,
+    count,
+    threads,
+    sizeValue,
+    countValue,
+    threadsValue,
+    maxThreads,
+  ]);
 
   const warning = useMemo(() => {
     if (liveError) return null;
@@ -152,21 +150,107 @@ const PrimeGenerator: React.FC = () => {
     const warnAt = getPrimeGenerationWarnThreshold(sizeValue, sizeType);
     if (warnAt === null) return null;
     if (countValue >= warnAt) {
-      return 'Warning: generation may take a few minutes.';
+      return 'Warning: generation may take a few minutes. Recommended to use multiple threads.';
     }
     return null;
   }, [liveError, sizeType, sizeValue, countValue]);
 
-  const progressTotal = progress.total || countValue || 0;
-  const currentPrimeIndex = heartbeat
-    ? heartbeat.primeIndex
-    : Math.min(progress.completed + 1, Math.max(progressTotal, 1));
+  const dispatchOnePrimeJob = (
+    worker: Worker,
+    options: PrimeGenerationOptions,
+    runId: number,
+    workerIndex: number,
+  ) => {
+    if (runIdRef.current !== runId) return;
+    if (foundCountRef.current >= targetCountRef.current) return;
+
+    const nextJobId = ++jobIdRef.current;
+    workerJobIdRef.current.set(worker, nextJobId);
+    let lastAttemptsForJob = 0;
+
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      if (runIdRef.current !== runId) return;
+      const msg = event.data;
+      const expectedJobId = workerJobIdRef.current.get(worker);
+      if (expectedJobId !== msg.jobId) return;
+
+      if (msg.type === 'heartbeat') {
+        const delta = Math.max(0, msg.attempts - lastAttemptsForJob);
+        lastAttemptsForJob = msg.attempts;
+        totalAttemptsRef.current += delta;
+
+        const now = performance.now();
+        if (now - lastUiMetricsUpdateRef.current >= 400) {
+          const elapsedSeconds = Math.max(
+            0.001,
+            (now - runStartedAtRef.current) / 1000,
+          );
+          const perSecond = totalAttemptsRef.current / elapsedSeconds;
+          setAttemptMetrics({
+            total: totalAttemptsRef.current,
+            perSecond,
+          });
+          lastUiMetricsUpdateRef.current = now;
+        }
+        return;
+      }
+
+      if (msg.type === 'error') {
+        setWorking(false);
+        setError(msg.message);
+        terminateWorkers();
+        return;
+      }
+
+      if (msg.type === 'completed') {
+        const prime = msg.primes[0];
+        if (prime && !foundSetRef.current.has(prime)) {
+          foundSetRef.current.add(prime);
+          foundCountRef.current += 1;
+          setPrimes((prev) => [...prev, prime]);
+          setProgress({
+            completed: foundCountRef.current,
+            total: targetCountRef.current,
+          });
+        }
+
+        if (foundCountRef.current >= targetCountRef.current) {
+          setWorking(false);
+          setAttemptMetrics((prev) => ({
+            ...prev,
+            total: totalAttemptsRef.current,
+            perSecond:
+              totalAttemptsRef.current /
+              Math.max(
+                0.001,
+                (performance.now() - runStartedAtRef.current) / 1000,
+              ),
+          }));
+          const elapsedSeconds =
+            (performance.now() - runStartedAtRef.current) / 1000;
+          setCompletionSummary(
+            `${targetCountRef.current} primes generated in ${elapsedSeconds.toFixed(2)} seconds.`,
+          );
+          terminateWorkers();
+          return;
+        }
+
+        dispatchOnePrimeJob(worker, options, runId, workerIndex);
+      }
+    };
+
+    worker.postMessage({
+      type: 'generate',
+      jobId: nextJobId,
+      options: { ...options, count: 1 },
+    });
+  };
 
   const generate = () => {
     setError(null);
     setPrimes([]);
     setCompletionSummary(null);
-    setHeartbeat(null);
+    setAttemptMetrics({ total: 0, perSecond: 0 });
     setProgress({ completed: 0, total: countValue || 0 });
 
     if (!Number.isInteger(sizeValue) || sizeValue <= 0) {
@@ -177,6 +261,15 @@ const PrimeGenerator: React.FC = () => {
       setError('Number of primes must be a positive integer.');
       return;
     }
+    if (!Number.isInteger(threadsValue) || threadsValue < 1) {
+      setError('Thread count must be a positive integer.');
+      return;
+    }
+    if (threadsValue > maxThreads) {
+      setError(`Maximum thread count is ${maxThreads}.`);
+      return;
+    }
+
     const validationError = validatePrimeGenerationRequest(
       sizeValue,
       sizeType,
@@ -190,46 +283,57 @@ const PrimeGenerator: React.FC = () => {
     const options: PrimeGenerationOptions = {
       size: sizeValue,
       sizeType,
-      count: countValue,
+      count: 1,
     };
 
-    if (!workerRef.current) initWorker();
-    if (!workerRef.current) {
-      setError('Failed to initialize worker.');
-      return;
-    }
+    terminateWorkers();
+    runIdRef.current += 1;
+    const runId = runIdRef.current;
+    runStartedAtRef.current = performance.now();
+    totalAttemptsRef.current = 0;
+    lastUiMetricsUpdateRef.current = 0;
+    targetCountRef.current = countValue;
+    foundCountRef.current = 0;
+    foundSetRef.current = new Set<string>();
 
-    const nextJobId = jobIdRef.current + 1;
-    jobIdRef.current = nextJobId;
+    const workerCount = Math.max(1, threadsValue);
+    workersRef.current = Array.from({ length: workerCount }, () =>
+      createPrimeGeneratorWorker(),
+    );
+
     setWorking(true);
-    workerRef.current.postMessage({
-      type: 'generate',
-      jobId: nextJobId,
-      options,
+
+    workersRef.current.forEach((worker, workerIndex) => {
+      dispatchOnePrimeJob(worker, options, runId, workerIndex);
     });
   };
 
   const clear = () => {
-    if (working && workerRef.current) {
-      workerRef.current.terminate();
-      workerRef.current = null;
-      initWorker();
-    }
+    terminateWorkers();
+    runIdRef.current += 1;
 
     setSize('');
     setSizeType('bits');
     setCount('1');
+    setThreads('1');
     setError(null);
     setPrimes([]);
     setCompletionSummary(null);
-    setHeartbeat(null);
+    setAttemptMetrics({ total: 0, perSecond: 0 });
     setProgress({ completed: 0, total: 0 });
     setWorking(false);
   };
 
+  const progressTotal = progress.total || countValue || 0;
+  const currentPrimeIndex = Math.min(
+    progress.completed + 1,
+    Math.max(progressTotal, 1),
+  );
+  const hasAttemptMetrics = attemptMetrics.total > 0;
+
   return (
     <div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <label className="flex flex-col gap-1">
           <span className="text-sm text-purple-300">Prime Size</span>
           <input
@@ -269,6 +373,23 @@ const PrimeGenerator: React.FC = () => {
             placeholder="1"
           />
         </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-purple-300">Threads</span>
+          <select
+            value={threads}
+            onChange={(e) => setThreads(e.target.value)}
+            className={inputClass}
+          >
+            {Array.from({ length: maxThreads }, (_, i) => String(i + 1)).map(
+              (t) => (
+                <option key={t} value={t}>
+                  {Number(t) === recommendedThreads ? `${t} (Recommended)` : t}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
       </div>
 
       {liveError ? (
@@ -294,21 +415,38 @@ const PrimeGenerator: React.FC = () => {
         {working ? (
           <div className="text-sm text-gray-300">
             {progressTotal > 0 && progress.completed >= progressTotal ? (
-              <p>Finalizing generated primes...</p>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
+                Finalizing generated primes...
+              </p>
             ) : (
-              <p>
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
                 Generating prime ({currentPrimeIndex}/{progressTotal})
               </p>
             )}
-            {heartbeat && progress.completed < progressTotal ? (
+            {progress.completed < progressTotal ? (
               <p className="text-xs text-gray-400">
-                Prime {heartbeat.primeIndex} attempts: {heartbeat.attempts}
+                ~{Math.round(attemptMetrics.total).toLocaleString()} candidates
+                tested
+                {' \u2022 '}~
+                {Math.round(attemptMetrics.perSecond).toLocaleString()}/sec
               </p>
             ) : null}
           </div>
         ) : null}
         {!working && completionSummary ? (
-          <p className="text-sm text-gray-300">{completionSummary}</p>
+          <div className="text-sm text-gray-300">
+            <p>{completionSummary}</p>
+            {hasAttemptMetrics ? (
+              <p className="text-xs text-gray-400">
+                ~{Math.round(attemptMetrics.total).toLocaleString()} candidates
+                tested
+                {' \u2022 '}~
+                {Math.round(attemptMetrics.perSecond).toLocaleString()}/sec
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
