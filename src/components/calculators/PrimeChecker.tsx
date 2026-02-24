@@ -96,6 +96,32 @@ const PrimeChecker: React.FC = () => {
     return r.compositeReason.slice('Factor found: '.length);
   };
   const smallPrimeDivisor = result ? getSmallPrimeDivisor(result) : null;
+  const methodUsed =
+    result === null
+      ? null
+      : `${result.method}${result.method === 'Miller-Rabin' && result.rounds ? ` (${result.rounds} rounds)` : ''}`;
+
+  const reasonText = (() => {
+    if (!result) return null;
+    if (result.method === 'Small Prime Check' && result.verdict === 'Prime') {
+      return 'Found in list of first 100 primes';
+    }
+    if (
+      result.method === 'Small Prime Check' &&
+      result.verdict === 'Composite'
+    ) {
+      return smallPrimeDivisor
+        ? `Divisible by small prime number: ${smallPrimeDivisor}`
+        : (result.compositeReason ?? 'Composite');
+    }
+    if (result.method === 'Baillie-PSW' && result.verdict === 'Composite') {
+      return 'Baillie-PSW test failed';
+    }
+    if (result.method === 'Miller-Rabin' && result.verdict === 'Composite') {
+      return `Miller-Rabin witness found: ${result.witness?.toString() ?? 'unknown'}`;
+    }
+    return null;
+  })();
 
   return (
     <div>
@@ -221,52 +247,29 @@ const PrimeChecker: React.FC = () => {
             </p>
           ) : null}
         </div>
+        {!working && computed && result && methodUsed ? (
+          <div className="text-sm text-gray-300">
+            <p>{`Method Used: ${methodUsed}`}</p>
+            {result.method === 'Miller-Rabin' &&
+            result.verdict === 'Probably Prime' ? (
+              <p className="text-xs text-gray-400">
+                Uncertainty {'\u2264'}{' '}
+                <MathText className="inline">{`2^{-${result.errorProbabilityExponent ?? 0}}`}</MathText>
+              </p>
+            ) : result.method === 'Baillie-PSW' &&
+              (result.verdict === 'Prime' ||
+                result.verdict === 'Probably Prime') ? (
+              <p className="text-xs text-gray-400">
+                No counterexample to the Baillie-PSW test is known;
+                exhaustively checked for odd{' '}
+                <MathText className="inline">{`n < 2^{64}`}</MathText>
+              </p>
+            ) : reasonText ? (
+              <p className="text-xs text-gray-400">{reasonText}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-
-      {!working && computed && result ? (
-        <div className="mt-2 space-y-2 p-4 rounded-lg bg-gray-900/40 border border-gray-700">
-          {/* <div className="text-sm text-gray-300">Details:</div> */}
-          <MathText className="block text-sm text-gray-200">
-            {`\\text{Method Used: ${result.method}${result.method === 'Miller-Rabin' && result.rounds ? ` (${result.rounds} rounds)` : ''}}`}
-          </MathText>
-          {result.method === 'Small Prime Check' &&
-          result.verdict === 'Prime' ? (
-            <MathText className="block text-sm text-gray-200">
-              {'\\text{Found in list of first 100 primes}'}
-            </MathText>
-          ) : null}
-          {result.method === 'Miller-Rabin' &&
-          result.verdict === 'Probably Prime' ? (
-            <MathText className="block text-sm text-gray-200">{`\\text{Uncertainty } \\le 2^{-${result.errorProbabilityExponent ?? 0}}`}</MathText>
-          ) : null}
-          {result.method === 'Baillie-PSW' &&
-          (result.verdict === 'Prime' ||
-            result.verdict === 'Probably Prime') ? (
-            <MathText className="block text-sm text-gray-200">
-              {
-                '\\text{No counterexample to the Baillie-PSW test is known; exhaustively checked for odd n < } 2^{64}'
-              }
-            </MathText>
-          ) : null}
-          {result.method === 'Small Prime Check' &&
-          result.verdict === 'Composite' ? (
-            smallPrimeDivisor ? (
-              <MathText className="block text-sm text-gray-200">{`\\text{Divisible by small prime number: ${smallPrimeDivisor}}`}</MathText>
-            ) : (
-              <MathText className="block text-sm text-gray-200">{`\\text{${result.compositeReason ?? 'Composite'}}`}</MathText>
-            )
-          ) : null}
-          {result.method === 'Baillie-PSW' && result.verdict === 'Composite' ? (
-            <MathText className="block text-sm text-gray-200">
-              {'\\text{Baillie-PSW test failed}'}
-            </MathText>
-          ) : null}
-          {result.method === 'Miller-Rabin' &&
-          result.verdict === 'Composite' ? (
-            <MathText className="block text-sm text-gray-200">{`\\text{Miller-Rabin witness found: ${result.witness?.toString() ?? 'unknown'}}`}</MathText>
-          ) : null}
-        </div>
-      ) : null}
 
       {error ? <div className={errorBoxClass}>{error}</div> : null}
     </div>
