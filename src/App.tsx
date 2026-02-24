@@ -8,6 +8,7 @@ import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
 import PrimeChecker from './components/calculators/PrimeChecker';
 import PrimeGenerator from './components/calculators/PrimeGenerator';
+import RSAEncryptor from './components/calculators/RSAEncryptor';
 
 const App: React.FC = () => {
   return (
@@ -110,6 +111,21 @@ const App: React.FC = () => {
             }
           >
             <PrimeGenerator />
+          </CalculatorCard>
+
+          <CalculatorCard
+            title="RSA Encrypter"
+            subtitle={
+              <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                <span>Encrypt text using</span>
+                <MathText className="text-purple-200">{'(e, n)'}</MathText>
+                <span>or build</span>
+                <MathText className="text-purple-200">{'n = p \\cdot q'}</MathText>
+                <span>from primes.</span>
+              </span>
+            }
+          >
+            <RSAEncryptor />
           </CalculatorCard>
         </div>
       </div>
