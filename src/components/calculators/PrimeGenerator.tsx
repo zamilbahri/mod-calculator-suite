@@ -56,6 +56,16 @@ const createPrimeGeneratorWorker = (): Worker =>
     { type: 'module' },
   );
 
+const getThreadOptionLabel = (
+  value: number,
+  recommended: number,
+  recommendedMax: number,
+): string => {
+  if (value === recommended) return `${value} (Recommended)`;
+  if (value === recommendedMax) return `${value} (Max Recommended)`;
+  return String(value);
+};
+
 const PrimeGenerator: React.FC = () => {
   const [size, setSize] = useState('');
   const [sizeType, setSizeType] = useState<PrimeSizeType>('bits');
@@ -96,6 +106,11 @@ const PrimeGenerator: React.FC = () => {
   }, []);
   const recommendedThreads = useMemo(
     () => Math.max(1, Math.floor(maxThreads / 2)),
+    [maxThreads],
+  );
+
+  const recommendedThreadsMax = useMemo(
+    () => Math.max(1, Math.floor((maxThreads * 3) / 4)),
     [maxThreads],
   );
 
@@ -353,7 +368,7 @@ const PrimeGenerator: React.FC = () => {
           <select
             value={sizeType}
             onChange={(e) => setSizeType(e.target.value as PrimeSizeType)}
-            className={inputClass}
+            className={`${inputClass} h-10.5`}
           >
             <option value="bits">bits</option>
             <option value="digits">digits</option>
@@ -379,15 +394,17 @@ const PrimeGenerator: React.FC = () => {
           <select
             value={threads}
             onChange={(e) => setThreads(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} h-10.5`}
           >
-            {Array.from({ length: maxThreads }, (_, i) => String(i + 1)).map(
-              (t) => (
-                <option key={t} value={t}>
-                  {Number(t) === recommendedThreads ? `${t} (Recommended)` : t}
-                </option>
-              ),
-            )}
+            {Array.from({ length: maxThreads }, (_, i) => i + 1).map((t) => (
+              <option key={t} value={t}>
+                {getThreadOptionLabel(
+                  t,
+                  recommendedThreads,
+                  recommendedThreadsMax,
+                )}
+              </option>
+            ))}
           </select>
         </label>
       </div>
