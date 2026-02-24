@@ -21,17 +21,22 @@ import {
   parseBigIntStrict,
   primalityCheck,
 } from '../../utils/numberTheory';
+import { PRIMES_LESS_THAN_1K } from '../../utils/numberTheory/primality/constants';
 
 type RsaDecryptRequest = {
   type: 'recover';
   jobId: number;
+  workerId: 'balanced' | 'low';
   n: string;
+  start: string;
+  endExclusive?: string;
   e?: string;
 };
 
 type RsaDecryptCompletedMessage = {
   type: 'completed';
   jobId: number;
+  workerId: 'balanced' | 'low';
   p: string;
   q: string;
   phi: string;
@@ -41,18 +46,27 @@ type RsaDecryptCompletedMessage = {
 type RsaDecryptHeartbeatMessage = {
   type: 'heartbeat';
   jobId: number;
+  workerId: 'balanced' | 'low';
   attempts: number;
+};
+
+type RsaDecryptNotFoundMessage = {
+  type: 'not_found';
+  jobId: number;
+  workerId: 'balanced' | 'low';
 };
 
 type RsaDecryptErrorMessage = {
   type: 'error';
   jobId: number;
+  workerId: 'balanced' | 'low';
   message: string;
 };
 
 type RsaDecryptResponse =
   | RsaDecryptHeartbeatMessage
   | RsaDecryptCompletedMessage
+  | RsaDecryptNotFoundMessage
   | RsaDecryptErrorMessage;
 
 type AlphabetEncoding = {
@@ -73,11 +87,14 @@ type FactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 
 type Mode = 'encrypt' | 'decrypt';
 type EncodingMode = 'fixed-width' | 'radix';
+type RecoverWorkerId = 'balanced' | 'low';
 
-const MAX_RECOVERY_MODULUS_BITS = 64;
+const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
 const DEFAULT_E = '65537';
 const DEFAULT_CUSTOM_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const WHEEL_PRECHECK_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
+const QUICK_PRECHECK_PRIMES = PRIMES_LESS_THAN_1K.slice(5);
 
 const createRsaDecryptWorker = (): Worker =>
   new Worker(new URL('../../workers/rsaDecrypt.worker.ts', import.meta.url), {
@@ -110,6 +127,18 @@ const getSymbolWidth = (values: Iterable<bigint>): number => {
   return maxValue.toString().length;
 };
 
+const integerSqrt = (n: bigint): bigint => {
+  if (n < 0n) throw new Error('Square root is undefined for negative values.');
+  if (n < 2n) return n;
+
+  let x = 1n << BigInt((n.toString(2).length + 1) >> 1);
+  while (true) {
+    const y = (x + n / x) >> 1n;
+    if (y >= x) return x;
+    x = y;
+  }
+};
+
 const RSAEncryptor: React.FC = () => {
   const [mode, setMode] = useState<Mode>('encrypt');
   const [encodingMode, setEncodingMode] = useState<EncodingMode>('fixed-width');
@@ -134,7 +163,10 @@ const RSAEncryptor: React.FC = () => {
   const [recoverWorking, setRecoverWorking] = useState(false);
   const [primeFactorsFound, setPrimeFactorsFound] = useState(false);
   const [recoverElapsedMs, setRecoverElapsedMs] = useState<number | null>(null);
-  const [recoverAttemptCount, setRecoverAttemptCount] = useState(0);
+  const [recoverAttemptCounts, setRecoverAttemptCounts] = useState<{
+    balanced: number;
+    low: number;
+  }>({ balanced: 0, low: 0 });
   const [recoverLiveElapsedMs, setRecoverLiveElapsedMs] = useState(0);
   const [pFactorCheck, setPFactorCheck] = useState<FactorCheckVerdict | null>(
     null,
@@ -143,17 +175,17 @@ const RSAEncryptor: React.FC = () => {
     null,
   );
 
-  const recoverWorkerRef = useRef<Worker | null>(null);
+  const recoverWorkersRef = useRef<Worker[]>([]);
   const recoverJobIdRef = useRef(0);
   const recoverStartedAtRef = useRef(0);
 
-  const terminateRecoverWorker = () => {
-    recoverWorkerRef.current?.terminate();
-    recoverWorkerRef.current = null;
+  const terminateRecoverWorkers = () => {
+    for (const worker of recoverWorkersRef.current) worker.terminate();
+    recoverWorkersRef.current = [];
   };
 
   useEffect(() => {
-    return () => terminateRecoverWorker();
+    return () => terminateRecoverWorkers();
   }, []);
 
   useEffect(() => {
@@ -501,7 +533,7 @@ const RSAEncryptor: React.FC = () => {
 
   const stopRecovery = () => {
     if (!recoverWorking) return;
-    terminateRecoverWorker();
+    terminateRecoverWorkers();
     recoverStartedAtRef.current = 0;
     setRecoverWorking(false);
     setError('Prime recovery stopped.');
@@ -513,6 +545,9 @@ const RSAEncryptor: React.FC = () => {
       return;
     }
     const startedAt = performance.now();
+    const n = recoverInputs.n;
+    const sqrtN = integerSqrt(n);
+    const trialUpperExclusive = sqrtN + 1n;
 
     const commitRecoveredFactors = (p: bigint, q: bigint, n: bigint) => {
       const phi = (p - 1n) * (q - 1n);
@@ -535,86 +570,127 @@ const RSAEncryptor: React.FC = () => {
         phi: phi.toString(),
         d: nextD,
       });
-      setRecoverAttemptCount(0);
+      setRecoverAttemptCounts({ balanced: 0, low: 0 });
       setPrimeFactorsFound(true);
       setRecoverElapsedMs(performance.now() - startedAt);
     };
 
-    // If one factor is known, test it first.
-    if (pInput.trim() !== '') {
-      try {
-        const p = parseBigIntStrict(pInput, 'p');
-        const n = recoverInputs.n;
-        if (p > 1n && n % p === 0n) {
-          const q = n / p;
-          if (q > 1n) {
-            commitRecoveredFactors(p, q, n);
-            return;
+    const runRecoveryPrechecks = (): { p: bigint; q: bigint } | null => {
+      for (const candidate of WHEEL_PRECHECK_PRIMES) {
+        if (n % candidate === 0n) {
+          const otherFactor = n / candidate;
+          if (otherFactor > 1n) return { p: candidate, q: otherFactor };
+        }
+      }
+
+      for (const candidate of QUICK_PRECHECK_PRIMES) {
+        if (candidate > sqrtN) break;
+        if (n % candidate === 0n) {
+          const otherFactor = n / candidate;
+          if (otherFactor > 1n) return { p: candidate, q: otherFactor };
+        }
+      }
+
+      if (sqrtN > 1n && sqrtN * sqrtN === n) return { p: sqrtN, q: sqrtN };
+
+      if (pInput.trim() !== '') {
+        try {
+          const p = parseBigIntStrict(pInput, 'p');
+          if (p > 1n && n % p === 0n) {
+            const q = n / p;
+            if (q > 1n) return { p, q };
           }
+        } catch {
+          // Continue prechecks.
         }
-      } catch {
-        // Fall through to worker-based trial division.
       }
-    }
 
-    if (qInput.trim() !== '') {
-      try {
-        const q = parseBigIntStrict(qInput, 'q');
-        const n = recoverInputs.n;
-        if (q > 1n && n % q === 0n) {
-          const p = n / q;
-          if (p > 1n) {
-            commitRecoveredFactors(p, q, n);
-            return;
+      if (qInput.trim() !== '') {
+        try {
+          const q = parseBigIntStrict(qInput, 'q');
+          if (q > 1n && n % q === 0n) {
+            const p = n / q;
+            if (p > 1n) return { p, q };
           }
+        } catch {
+          // Continue prechecks.
         }
-      } catch {
-        // Fall through to worker-based trial division.
       }
+
+      if (pInput.trim() !== '' && qInput.trim() !== '') {
+        try {
+          const p = parseBigIntStrict(pInput, 'p');
+          const q = parseBigIntStrict(qInput, 'q');
+          if (p * q === n) return { p, q };
+        } catch {
+          // Continue to worker search.
+        }
+      }
+
+      return null;
+    };
+
+    const prechecked = runRecoveryPrechecks();
+    if (prechecked) {
+      commitRecoveredFactors(prechecked.p, prechecked.q, n);
+      return;
     }
 
-    // If p and q are already known and consistent with n, skip trial division.
-    if (pInput.trim() !== '' && qInput.trim() !== '') {
-      try {
-        const p = parseBigIntStrict(pInput, 'p');
-        const q = parseBigIntStrict(qInput, 'q');
-        const n = recoverInputs.n;
-        if (p * q === n) {
-          commitRecoveredFactors(p, q, n);
-          return;
-        }
-      } catch {
-        // Fall through to worker-based trial division.
-      }
+    const bitLen = n.toString(2).length;
+    const balancedStartRaw =
+      1n << BigInt(Math.max(0, Math.floor(bitLen / 2) - 1));
+    const balancedStart = balancedStartRaw > 7n ? balancedStartRaw : 7n;
+    const lowRangeEndExclusive =
+      balancedStart < trialUpperExclusive ? balancedStart : trialUpperExclusive;
+
+    const ranges: Array<{
+      workerId: RecoverWorkerId;
+      start: bigint;
+      endExclusive?: bigint;
+    }> = [];
+    if (balancedStart < trialUpperExclusive) {
+      ranges.push({
+        workerId: 'balanced',
+        start: balancedStart,
+        endExclusive: trialUpperExclusive,
+      });
+    }
+    if (lowRangeEndExclusive > 7n) {
+      ranges.push({
+        workerId: 'low',
+        start: 7n,
+        endExclusive: lowRangeEndExclusive,
+      });
     }
 
-    terminateRecoverWorker();
-    const worker = createRsaDecryptWorker();
-    recoverWorkerRef.current = worker;
+    if (ranges.length === 0) {
+      setError('Failed to factor n. Use a semiprime modulus.');
+      return;
+    }
+
+    terminateRecoverWorkers();
     setRecoverWorking(true);
     setPrimeFactorsFound(false);
-    setRecoverAttemptCount(0);
+    setRecoverAttemptCounts({ balanced: 0, low: 0 });
     setError(null);
     recoverStartedAtRef.current = performance.now();
 
     const jobId = ++recoverJobIdRef.current;
-    worker.onmessage = (event: MessageEvent<RsaDecryptResponse>) => {
-      const msg = event.data;
-      if (msg.jobId !== jobId) return;
+    let resolved = false;
+    let notFoundCount = 0;
 
-      if (msg.type === 'heartbeat') {
-        setRecoverAttemptCount(msg.attempts);
-        return;
-      }
+    const finishWithError = (message: string) => {
+      if (resolved) return;
+      resolved = true;
+      setRecoverWorking(false);
+      recoverStartedAtRef.current = 0;
+      setError(message);
+      terminateRecoverWorkers();
+    };
 
-      if (msg.type === 'error') {
-        setRecoverWorking(false);
-        recoverStartedAtRef.current = 0;
-        setError(msg.message);
-        terminateRecoverWorker();
-        return;
-      }
-
+    const finishWithFactors = (msg: RsaDecryptCompletedMessage) => {
+      if (resolved) return;
+      resolved = true;
       setPInput(msg.p);
       setQInput(msg.q);
       setPhiValue(msg.phi);
@@ -623,7 +699,7 @@ const RSAEncryptor: React.FC = () => {
       setComputedKeySnapshot({
         p: msg.p,
         q: msg.q,
-        n: recoverInputs.n.toString(),
+        n: n.toString(),
         phi: msg.phi,
         d: nextD,
       });
@@ -631,18 +707,56 @@ const RSAEncryptor: React.FC = () => {
       setRecoverElapsedMs(performance.now() - startedAt);
       setRecoverWorking(false);
       recoverStartedAtRef.current = 0;
-      terminateRecoverWorker();
+      terminateRecoverWorkers();
     };
 
-    const request: RsaDecryptRequest = {
-      type: 'recover',
-      jobId,
-      n: recoverInputs.n.toString(),
-    };
-    if (recoverInputs.e !== undefined) {
-      request.e = recoverInputs.e.toString();
+    for (const range of ranges) {
+      const worker = createRsaDecryptWorker();
+      recoverWorkersRef.current.push(worker);
+
+      worker.onmessage = (event: MessageEvent<RsaDecryptResponse>) => {
+        const msg = event.data;
+        if (msg.jobId !== jobId || resolved) return;
+
+        if (msg.type === 'heartbeat') {
+          setRecoverAttemptCounts((prev) => ({
+            ...prev,
+            [msg.workerId]: msg.attempts,
+          }));
+          return;
+        }
+
+        if (msg.type === 'error') {
+          finishWithError(msg.message);
+          return;
+        }
+
+        if (msg.type === 'not_found') {
+          notFoundCount += 1;
+          if (notFoundCount >= ranges.length) {
+            finishWithError('Failed to factor n. Use a semiprime modulus.');
+          }
+          return;
+        }
+
+        finishWithFactors(msg);
+      };
+
+      const request: RsaDecryptRequest = {
+        type: 'recover',
+        jobId,
+        workerId: range.workerId,
+        n: n.toString(),
+        start: range.start.toString(),
+      };
+      if (range.endExclusive !== undefined) {
+        request.endExclusive = range.endExclusive.toString();
+      }
+      if (recoverInputs.e !== undefined) {
+        request.e = recoverInputs.e.toString();
+      }
+      worker.postMessage(request);
     }
-    worker.postMessage(request);
   };
 
   const clearKeyInputs = () => {
@@ -773,12 +887,27 @@ const RSAEncryptor: React.FC = () => {
           <div className="text-sm text-gray-300">
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
               <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
-              Search for prime factors via trial division
+              Searching via trial division...
             </p>
-            <p className="text-xs text-gray-400">
-              ~{Math.round(recoverAttemptCount).toLocaleString()} candidates
-              tested
-            </p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-gray-400">
+              <p>
+                Worker 1: ~
+                {(recoverAttemptCounts.balanced / 1_000_000).toLocaleString(
+                  undefined,
+                  { maximumFractionDigits: 1 },
+                )}
+                M checked
+              </p>
+              <span aria-hidden="true">•</span>
+              <p>
+                Worker 2: ~
+                {(recoverAttemptCounts.low / 1_000_000).toLocaleString(
+                  undefined,
+                  { maximumFractionDigits: 1 },
+                )}
+                M checked
+              </p>
+            </div>
           </div>
         ) : null}
         <button
@@ -794,7 +923,8 @@ const RSAEncryptor: React.FC = () => {
         <p className="mt-1 text-xs italic text-gray-400">
           Recover primes is only enabled for{' '}
           <MathText>{`n < 2^{${MAX_RECOVERY_MODULUS_BITS}}`}</MathText>. May
-          take longer for unbalanced <MathText>N</MathText>.
+          take a few minutes for <MathText>{`n > 2^{${60}}`}</MathText>{' '}
+          depending on hardware.
         </p>
       ) : null}
       {error ? <div className={errorBoxClass}>{error}</div> : null}

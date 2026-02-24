@@ -5,7 +5,10 @@ import { gcd, modInverse } from '../utils/numberTheory';
 type RecoverRequest = {
   type: 'recover';
   jobId: number;
+  workerId: 'balanced' | 'low';
   n: string;
+  start: string;
+  endExclusive?: string;
   e?: string;
 };
 
@@ -14,53 +17,59 @@ type WorkerRequest = RecoverRequest;
 type HeartbeatMessage = {
   type: 'heartbeat';
   jobId: number;
+  workerId: 'balanced' | 'low';
   attempts: number;
 };
 
 type CompletedMessage = {
   type: 'completed';
   jobId: number;
+  workerId: 'balanced' | 'low';
   p: string;
   q: string;
   phi: string;
   d: string;
 };
 
+type NotFoundMessage = {
+  type: 'not_found';
+  jobId: number;
+  workerId: 'balanced' | 'low';
+};
+
 type ErrorMessage = {
   type: 'error';
   jobId: number;
+  workerId: 'balanced' | 'low';
   message: string;
 };
 
 const ctx: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope;
 
-const WHEEL_BASE = 30n;
-const WHEEL_OFFSETS = [1n, 7n, 11n, 13n, 17n, 19n, 23n, 29n] as const;
+const WHEEL_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
+const WHEEL_BASE = WHEEL_PRIMES.reduce((acc, p) => acc * p, 1n);
+const HEARTBEAT_BATCH_SIZE = 5_000_000;
+const WHEEL_OFFSETS: bigint[] = (() => {
+  const residues: bigint[] = [];
+  let candidate = 1n;
+  while (candidate < WHEEL_BASE) {
+    if (gcd(candidate, WHEEL_BASE) === 1n) residues.push(candidate);
+    candidate += 1n;
+  }
+  return residues;
+})();
 
 type AttemptState = {
   attempts: number;
-  lastHeartbeatTs: number;
 };
 
 const emitHeartbeatMaybe = (
   state: AttemptState,
   onHeartbeat: (attempts: number) => void,
 ) => {
-  const now = performance.now();
-  if (now - state.lastHeartbeatTs >= 250) {
+  if (state.attempts % HEARTBEAT_BATCH_SIZE === 0) {
     onHeartbeat(state.attempts);
-    state.lastHeartbeatTs = now;
   }
-};
-
-const bitLength = (value: bigint): number => {
-  let bits = 0;
-  let v = value;
-  while (v > 0n) {
-    v >>= 1n;
-    bits += 1;
-  }
-  return bits;
 };
 
 const scanWheelRange = (
@@ -71,13 +80,22 @@ const scanWheelRange = (
   onHeartbeat: (attempts: number) => void,
 ): bigint | null => {
   if (startInclusive <= 1n) startInclusive = 2n;
-  if (startInclusive % 2n === 0n) startInclusive += 1n;
-
   let block = (startInclusive / WHEEL_BASE) * WHEEL_BASE;
+  let offsetIndex = 0;
+  while (
+    offsetIndex < WHEEL_OFFSETS.length &&
+    block + WHEEL_OFFSETS[offsetIndex] < startInclusive
+  ) {
+    offsetIndex += 1;
+  }
+  if (offsetIndex >= WHEEL_OFFSETS.length) {
+    block += WHEEL_BASE;
+    offsetIndex = 0;
+  }
+
   while (true) {
-    for (const offset of WHEEL_OFFSETS) {
-      const candidate = block + offset;
-      if (candidate < startInclusive) continue;
+    for (let i = offsetIndex; i < WHEEL_OFFSETS.length; i += 1) {
+      const candidate = block + WHEEL_OFFSETS[i];
       if (endExclusive !== null && candidate >= endExclusive) return null;
       if (candidate * candidate > n) return null;
 
@@ -86,49 +104,20 @@ const scanWheelRange = (
       if (n % candidate === 0n) return candidate;
     }
     block += WHEEL_BASE;
+    offsetIndex = 0;
   }
 };
 
 const findPrimeFactors = (
   n: bigint,
+  startInclusive: bigint,
+  endExclusive: bigint | null,
   onHeartbeat: (attempts: number) => void,
 ): { p: bigint; q: bigint } | null => {
-  if (n < 4n) return null;
-  if (n % 2n === 0n) return { p: 2n, q: n / 2n };
+  const state: AttemptState = { attempts: 0 };
 
-  const state: AttemptState = { attempts: 0, lastHeartbeatTs: 0 };
-
-  state.attempts += 1;
-  emitHeartbeatMaybe(state, onHeartbeat);
-  if (n % 3n === 0n) return { p: 3n, q: n / 3n };
-
-  state.attempts += 1;
-  emitHeartbeatMaybe(state, onHeartbeat);
-  if (n % 5n === 0n) return { p: 5n, q: n / 5n };
-
-  const nBits = bitLength(n);
-  const halfBitsMinusOne = Math.floor(nBits / 2) - 1;
-  const phaseAStart =
-    halfBitsMinusOne >= 0 ? 1n << BigInt(halfBitsMinusOne) : 7n;
-  const balancedStart = phaseAStart > 7n ? phaseAStart : 7n;
-
-  const phaseAFactor = scanWheelRange(
-    n,
-    balancedStart,
-    null,
-    state,
-    onHeartbeat,
-  );
-  if (phaseAFactor !== null) {
-    return { p: phaseAFactor, q: n / phaseAFactor };
-  }
-
-  if (balancedStart > 7n) {
-    const phaseBFactor = scanWheelRange(n, 7n, balancedStart, state, onHeartbeat);
-    if (phaseBFactor !== null) {
-      return { p: phaseBFactor, q: n / phaseBFactor };
-    }
-  }
+  const factor = scanWheelRange(n, startInclusive, endExclusive, state, onHeartbeat);
+  if (factor !== null) return { p: factor, q: n / factor };
 
   onHeartbeat(state.attempts);
   return null;
@@ -140,19 +129,41 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
   try {
     const n = BigInt(msg.n);
+    const start = BigInt(msg.start);
+    const endExclusive =
+      typeof msg.endExclusive === 'string' && msg.endExclusive.trim() !== ''
+        ? BigInt(msg.endExclusive)
+        : null;
 
     if (n <= 1n) throw new Error('n must be greater than 1.');
+    if (start <= 1n) throw new Error('Invalid recovery range.');
+    if (endExclusive !== null && endExclusive <= start) {
+      const notFound: NotFoundMessage = {
+        type: 'not_found',
+        jobId: msg.jobId,
+        workerId: msg.workerId,
+      };
+      ctx.postMessage(notFound);
+      return;
+    }
 
-    const factors = findPrimeFactors(n, (attempts) => {
+    const factors = findPrimeFactors(n, start, endExclusive, (attempts) => {
       const heartbeat: HeartbeatMessage = {
         type: 'heartbeat',
         jobId: msg.jobId,
+        workerId: msg.workerId,
         attempts,
       };
       ctx.postMessage(heartbeat);
     });
     if (!factors) {
-      throw new Error('Failed to factor n. Use a semiprime modulus.');
+      const notFound: NotFoundMessage = {
+        type: 'not_found',
+        jobId: msg.jobId,
+        workerId: msg.workerId,
+      };
+      ctx.postMessage(notFound);
+      return;
     }
 
     const p = factors.p;
@@ -169,6 +180,7 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
     const done: CompletedMessage = {
       type: 'completed',
       jobId: msg.jobId,
+      workerId: msg.workerId,
       p: p.toString(),
       q: q.toString(),
       phi: phi.toString(),
@@ -179,6 +191,7 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
     const err: ErrorMessage = {
       type: 'error',
       jobId: msg.jobId,
+      workerId: msg.workerId,
       message:
         error instanceof Error ? error.message : 'Failed to recover RSA key.',
     };
