@@ -37,7 +37,7 @@ export function primalityCheck(
   if (n === 2n) return exactPrime();
   if ((n & 1n) === 0n) return exactComposite('Factor found: 2');
 
-  for (const p of PRIMES_LESS_THAN_1K) {
+  for (const p of PRIMES_LESS_THAN_1K.slice(1)) {
     if (n === p) return exactPrime();
     if (n % p === 0n) return exactComposite(`Factor found: ${p.toString()}`);
   }
