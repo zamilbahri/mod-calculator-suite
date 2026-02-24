@@ -676,7 +676,11 @@ const RSAEncryptor: React.FC = () => {
 
       <div className="grid gap-4 md:grid-cols-2">
         <NumericInput
-          label="Prime p"
+          label={
+            <span>
+              Prime <MathText className="inline">p</MathText>
+            </span>
+          }
           value={pInput}
           onChange={setPInput}
           placeholder="Prime p"
@@ -684,7 +688,11 @@ const RSAEncryptor: React.FC = () => {
           rows={1}
         />
         <NumericInput
-          label="Prime q"
+          label={
+            <span>
+              Prime <MathText className="inline">q</MathText>
+            </span>
+          }
           value={qInput}
           onChange={setQInput}
           placeholder="Prime q"
@@ -692,7 +700,11 @@ const RSAEncryptor: React.FC = () => {
           rows={1}
         />
         <NumericInput
-          label="Public exponent e"
+          label={
+            <span>
+              Public exponent <MathText className="inline">e</MathText>
+            </span>
+          }
           value={eInput}
           onChange={setEInput}
           placeholder={DEFAULT_E}
@@ -700,7 +712,11 @@ const RSAEncryptor: React.FC = () => {
           rows={1}
         />
         <NumericInput
-          label="Modulus n"
+          label={
+            <span>
+              Modulus <MathText className="inline">n</MathText>
+            </span>
+          }
           value={nInput}
           onChange={setNInput}
           placeholder="Modulus n"
@@ -724,13 +740,16 @@ const RSAEncryptor: React.FC = () => {
               type="button"
               onClick={canStopRecovery ? stopRecovery : recoverPrimes}
               disabled={!canRecoverPrimes && !canStopRecovery}
-              className={`${secondaryButtonClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`${secondaryButtonClass} relative disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {canStopRecovery
-                ? 'Stop'
-                : recoverWorking
-                  ? 'Recovering…'
-                  : 'Recover primes'}
+              <span className="invisible">Recover primes</span>
+              <span className="absolute inset-0 flex items-center justify-center">
+                {canStopRecovery
+                  ? 'Stop'
+                  : recoverWorking
+                    ? 'Recovering…'
+                    : 'Recover primes'}
+              </span>
             </button>
             {primeFactorsFound && recoverElapsedMs !== null ? (
               <p className="text-sm text-gray-300">
@@ -763,9 +782,22 @@ const RSAEncryptor: React.FC = () => {
       {computedKeySnapshot ? (
         <div className="mt-4 space-y-3">
           <div className="grid gap-4 md:grid-cols-2">
-            <NumericOutput label="Prime p" value={computedKeySnapshot.p} />
-            <NumericOutput label="Prime q" value={computedKeySnapshot.q} />
-            <NumericOutput label="Modulus n" value={computedKeySnapshot.n} />
+            <NumericOutput
+              label={
+                <span>
+                  Recovered factor <MathText className="inline">p</MathText>
+                </span>
+              }
+              value={computedKeySnapshot.p}
+            />
+            <NumericOutput
+              label={
+                <span>
+                  Recovered factor <MathText className="inline">q</MathText>
+                </span>
+              }
+              value={computedKeySnapshot.q}
+            />
             <NumericOutput
               label={<MathText>{`\\varphi(n)`}</MathText>}
               value={computedKeySnapshot.phi}
