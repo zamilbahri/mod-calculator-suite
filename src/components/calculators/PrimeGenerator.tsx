@@ -51,9 +51,12 @@ type WorkerResponse =
   | WorkerErrorMessage;
 
 const createPrimeGeneratorWorker = (): Worker =>
-  new Worker(new URL('../../workers/primeGenerator.worker.ts', import.meta.url), {
-    type: 'module',
-  });
+  new Worker(
+    new URL('../../workers/primeGenerator.worker.ts', import.meta.url),
+    {
+      type: 'module',
+    },
+  );
 
 const PrimeGenerator: React.FC = () => {
   const [size, setSize] = useState('');
@@ -63,8 +66,13 @@ const PrimeGenerator: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [primes, setPrimes] = useState<string[]>([]);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
-  const [completionSummary, setCompletionSummary] = useState<string | null>(null);
-  const [heartbeat, setHeartbeat] = useState<{ primeIndex: number; attempts: number } | null>(null);
+  const [completionSummary, setCompletionSummary] = useState<string | null>(
+    null,
+  );
+  const [heartbeat, setHeartbeat] = useState<{
+    primeIndex: number;
+    attempts: number;
+  } | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const jobIdRef = useRef(0);
 
@@ -144,10 +152,15 @@ const PrimeGenerator: React.FC = () => {
     const warnAt = getPrimeGenerationWarnThreshold(sizeValue, sizeType);
     if (warnAt === null) return null;
     if (countValue >= warnAt) {
-      return 'Warning: generation may take up to 1 minute.';
+      return 'Warning: generation may take a few minutes.';
     }
     return null;
   }, [liveError, sizeType, sizeValue, countValue]);
+
+  const progressTotal = progress.total || countValue || 0;
+  const currentPrimeIndex = heartbeat
+    ? heartbeat.primeIndex
+    : Math.min(progress.completed + 1, Math.max(progressTotal, 1));
 
   const generate = () => {
     setError(null);
@@ -280,10 +293,14 @@ const PrimeGenerator: React.FC = () => {
         </button>
         {working ? (
           <div className="text-sm text-gray-300">
-            <p>
-              Generating prime ({progress.completed}/{progress.total || countValue || 0})
-            </p>
-            {heartbeat ? (
+            {progressTotal > 0 && progress.completed >= progressTotal ? (
+              <p>Finalizing generated primes...</p>
+            ) : (
+              <p>
+                Generating prime ({currentPrimeIndex}/{progressTotal})
+              </p>
+            )}
+            {heartbeat && progress.completed < progressTotal ? (
               <p className="text-xs text-gray-400">
                 Prime {heartbeat.primeIndex} attempts: {heartbeat.attempts}
               </p>
@@ -300,7 +317,11 @@ const PrimeGenerator: React.FC = () => {
       {primes.length > 0 ? (
         <div className="mt-4 space-y-4">
           {primes.map((value, idx) => (
-            <NumericOutput key={`${idx}-${value.slice(0, 24)}`} label={`Prime ${idx + 1}`} value={value} />
+            <NumericOutput
+              key={`${idx}-${value.slice(0, 24)}`}
+              label={`Prime ${idx + 1}`}
+              value={value}
+            />
           ))}
         </div>
       ) : null}
