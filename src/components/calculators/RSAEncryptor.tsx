@@ -644,33 +644,17 @@ const RSAEncryptor: React.FC = () => {
     worker.postMessage(request);
   };
 
-  const clear = () => {
-    terminateRecoverWorker();
-    setMode('encrypt');
-    setEncodingMode('fixed-width');
+  const clearKeyInputs = () => {
     setPInput('');
     setQInput('');
     setEInput(DEFAULT_E);
     setNInput('');
-    setPhiValue('');
-    setDValue('');
-    setComputedKeySnapshot(null);
-    setAlphabetMode('ascii');
-    setCustomAlphabet(DEFAULT_CUSTOM_ALPHABET);
-    setCustomIgnoreCase(true);
-    setCustomOffset('0');
-    setBlockSizeInput('');
+  };
+
+  const clearTextBlocks = () => {
     setMessageInput('');
     setEncryptOutput('');
     setDecryptOutput('');
-    setError(null);
-    setWorking(false);
-    setRecoverWorking(false);
-    setPrimeFactorsFound(false);
-    setRecoverElapsedMs(null);
-    setRecoverAttemptCount(0);
-    setRecoverLiveElapsedMs(0);
-    recoverStartedAtRef.current = 0;
   };
 
   return (
@@ -796,6 +780,14 @@ const RSAEncryptor: React.FC = () => {
             </p>
           </div>
         ) : null}
+        <button
+          type="button"
+          onClick={clearKeyInputs}
+          disabled={working || recoverWorking}
+          className={`${secondaryButtonClass} ml-auto disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          Clear keys
+        </button>
       </div>
       {mode === 'decrypt' ? (
         <p className="mt-1 text-xs italic text-gray-400">
@@ -1016,8 +1008,12 @@ const RSAEncryptor: React.FC = () => {
           </button>
         )}
 
-        <button type="button" onClick={clear} className={secondaryButtonClass}>
-          Clear
+        <button
+          type="button"
+          onClick={clearTextBlocks}
+          className={secondaryButtonClass}
+        >
+          Clear text
         </button>
       </div>
 
