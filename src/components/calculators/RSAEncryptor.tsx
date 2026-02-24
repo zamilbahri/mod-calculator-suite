@@ -182,7 +182,8 @@ const RSAEncryptor: React.FC = () => {
     try {
       const value =
         factor === 'p' ? computedKeySnapshot.p : computedKeySnapshot.q;
-      const verdict = primalityCheck(BigInt(value)).verdict as FactorCheckVerdict;
+      const verdict = primalityCheck(BigInt(value))
+        .verdict as FactorCheckVerdict;
       if (factor === 'p') setPFactorCheck(verdict);
       else setQFactorCheck(verdict);
     } catch {
@@ -796,6 +797,7 @@ const RSAEncryptor: React.FC = () => {
           .
         </p>
       ) : null}
+      {error ? <div className={errorBoxClass}>{error}</div> : null}
 
       {computedKeySnapshot ? (
         <div className="mt-4 space-y-3">
@@ -1016,8 +1018,6 @@ const RSAEncryptor: React.FC = () => {
           Clear text
         </button>
       </div>
-
-      {error ? <div className={errorBoxClass}>{error}</div> : null}
 
       {mode === 'encrypt' && encryptOutput ? (
         <div className="mt-6">

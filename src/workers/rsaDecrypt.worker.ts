@@ -77,7 +77,7 @@ ctx.onmessage = (event: MessageEvent<WorkerRequest>) => {
       ctx.postMessage(heartbeat);
     });
     if (!factors) {
-      throw new Error('Failed to factor n. Use a smaller semiprime modulus.');
+      throw new Error('Failed to factor n. Use a semiprime modulus.');
     }
 
     const p = factors.p;
