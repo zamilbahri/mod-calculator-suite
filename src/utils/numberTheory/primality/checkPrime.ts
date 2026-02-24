@@ -1,5 +1,5 @@
 import type { PrimalityCheckResult } from '../../../types';
-import { SMALL_PRIMES, TWO_POW_64 } from './constants';
+import { PRIMES_LESS_THAN_1K, TWO_POW_64 } from './constants';
 import { isBPSWProbablePrime } from './bpsw';
 import {
   isMillerRabinProbablePrime,
@@ -37,7 +37,7 @@ export function primalityCheck(
   if (n === 2n) return exactPrime();
   if ((n & 1n) === 0n) return exactComposite('Factor found: 2');
 
-  for (const p of SMALL_PRIMES) {
+  for (const p of PRIMES_LESS_THAN_1K) {
     if (n === p) return exactPrime();
     if (n % p === 0n) return exactComposite(`Factor found: ${p.toString()}`);
   }
