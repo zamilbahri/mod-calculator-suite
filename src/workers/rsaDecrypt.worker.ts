@@ -34,6 +34,61 @@ type ErrorMessage = {
 
 const ctx: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope;
 
+const WHEEL_BASE = 30n;
+const WHEEL_OFFSETS = [1n, 7n, 11n, 13n, 17n, 19n, 23n, 29n] as const;
+
+type AttemptState = {
+  attempts: number;
+  lastHeartbeatTs: number;
+};
+
+const emitHeartbeatMaybe = (
+  state: AttemptState,
+  onHeartbeat: (attempts: number) => void,
+) => {
+  const now = performance.now();
+  if (now - state.lastHeartbeatTs >= 250) {
+    onHeartbeat(state.attempts);
+    state.lastHeartbeatTs = now;
+  }
+};
+
+const bitLength = (value: bigint): number => {
+  let bits = 0;
+  let v = value;
+  while (v > 0n) {
+    v >>= 1n;
+    bits += 1;
+  }
+  return bits;
+};
+
+const scanWheelRange = (
+  n: bigint,
+  startInclusive: bigint,
+  endExclusive: bigint | null,
+  state: AttemptState,
+  onHeartbeat: (attempts: number) => void,
+): bigint | null => {
+  if (startInclusive <= 1n) startInclusive = 2n;
+  if (startInclusive % 2n === 0n) startInclusive += 1n;
+
+  let block = (startInclusive / WHEEL_BASE) * WHEEL_BASE;
+  while (true) {
+    for (const offset of WHEEL_OFFSETS) {
+      const candidate = block + offset;
+      if (candidate < startInclusive) continue;
+      if (endExclusive !== null && candidate >= endExclusive) return null;
+      if (candidate * candidate > n) return null;
+
+      state.attempts += 1;
+      emitHeartbeatMaybe(state, onHeartbeat);
+      if (n % candidate === 0n) return candidate;
+    }
+    block += WHEEL_BASE;
+  }
+};
+
 const findPrimeFactors = (
   n: bigint,
   onHeartbeat: (attempts: number) => void,
@@ -41,21 +96,41 @@ const findPrimeFactors = (
   if (n < 4n) return null;
   if (n % 2n === 0n) return { p: 2n, q: n / 2n };
 
-  let p = 3n;
-  let attempts = 0;
-  let lastHeartbeatTs = 0;
-  while (p * p <= n) {
-    attempts += 1;
-    const now = performance.now();
-    if (now - lastHeartbeatTs >= 250) {
-      onHeartbeat(attempts);
-      lastHeartbeatTs = now;
-    }
-    if (n % p === 0n) return { p, q: n / p };
-    p += 2n;
+  const state: AttemptState = { attempts: 0, lastHeartbeatTs: 0 };
+
+  state.attempts += 1;
+  emitHeartbeatMaybe(state, onHeartbeat);
+  if (n % 3n === 0n) return { p: 3n, q: n / 3n };
+
+  state.attempts += 1;
+  emitHeartbeatMaybe(state, onHeartbeat);
+  if (n % 5n === 0n) return { p: 5n, q: n / 5n };
+
+  const nBits = bitLength(n);
+  const halfBitsMinusOne = Math.floor(nBits / 2) - 1;
+  const phaseAStart =
+    halfBitsMinusOne >= 0 ? 1n << BigInt(halfBitsMinusOne) : 7n;
+  const balancedStart = phaseAStart > 7n ? phaseAStart : 7n;
+
+  const phaseAFactor = scanWheelRange(
+    n,
+    balancedStart,
+    null,
+    state,
+    onHeartbeat,
+  );
+  if (phaseAFactor !== null) {
+    return { p: phaseAFactor, q: n / phaseAFactor };
   }
 
-  onHeartbeat(attempts);
+  if (balancedStart > 7n) {
+    const phaseBFactor = scanWheelRange(n, 7n, balancedStart, state, onHeartbeat);
+    if (phaseBFactor !== null) {
+      return { p: phaseBFactor, q: n / phaseBFactor };
+    }
+  }
+
+  onHeartbeat(state.attempts);
   return null;
 };
 
