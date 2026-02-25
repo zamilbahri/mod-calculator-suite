@@ -202,8 +202,10 @@ const RSAEncryptor: React.FC = () => {
   const [decryptOutput, setDecryptOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
+  const [computeWorking, setComputeWorking] = useState(false);
   const [recoverWorking, setRecoverWorking] = useState(false);
   const [primeFactorsFound, setPrimeFactorsFound] = useState(false);
+  const [showRecoveredFactors, setShowRecoveredFactors] = useState(false);
   const [recoverElapsedMs, setRecoverElapsedMs] = useState<number | null>(null);
   const [recoverAttemptCounts, setRecoverAttemptCounts] = useState<{
     balanced: number;
@@ -347,9 +349,11 @@ const RSAEncryptor: React.FC = () => {
     }
   }, [buildAlphabetEncoding, nInput]);
 
-  const computeKeyDetails = () => {
+  const computeKeyDetails = async () => {
     setError(null);
+    setComputeWorking(true);
     try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const p = parseBigIntStrict(pInput, 'p');
       const q = parseBigIntStrict(qInput, 'q');
       if (
@@ -364,15 +368,36 @@ const RSAEncryptor: React.FC = () => {
       setPhiValue(phi.toString());
 
       if (eInput.trim() === '') {
-        const hint = 'Enter e coprime to ϕ and e < n';
-        setDValue(hint);
+        const defaultEs = [65537n, 257n, 17n, 3n];
+        const selectedE = defaultEs.find(
+          (candidate) =>
+            candidate > 1n && candidate < phi && gcd(candidate, phi) === 1n,
+        );
+        if (!selectedE) {
+          const hint = 'Enter e coprime to ϕ and e < n';
+          setDValue(hint);
+          setComputedKeySnapshot({
+            p: p.toString(),
+            q: q.toString(),
+            n: n.toString(),
+            phi: phi.toString(),
+            d: hint,
+          });
+          setShowRecoveredFactors(false);
+          return;
+        }
+
+        setEInput(selectedE.toString());
+        const autoD = modInverse(selectedE, phi).toString();
+        setDValue(autoD);
         setComputedKeySnapshot({
           p: p.toString(),
           q: q.toString(),
           n: n.toString(),
           phi: phi.toString(),
-          d: hint,
+          d: autoD,
         });
+        setShowRecoveredFactors(false);
         return;
       }
 
@@ -387,6 +412,7 @@ const RSAEncryptor: React.FC = () => {
           phi: phi.toString(),
           d: hint,
         });
+        setShowRecoveredFactors(false);
         return;
       }
 
@@ -400,10 +426,13 @@ const RSAEncryptor: React.FC = () => {
         phi: phi.toString(),
         d: dText,
       });
+      setShowRecoveredFactors(false);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : 'Failed to compute key values.',
       );
+    } finally {
+      setComputeWorking(false);
     }
   };
 
@@ -589,6 +618,7 @@ const RSAEncryptor: React.FC = () => {
     recoverInputs !== null &&
     recoverInputs.n < MAX_RECOVERY_MODULUS &&
     !recoverWorking &&
+    !computeWorking &&
     !primeGenWorking &&
     !working;
   const canStopRecovery = recoverWorking && recoverLiveElapsedMs >= 1000;
@@ -632,6 +662,7 @@ const RSAEncryptor: React.FC = () => {
         phi: phi.toString(),
         d: nextD,
       });
+      setShowRecoveredFactors(true);
       setRecoverAttemptCounts({ balanced: 0, low: 0 });
       setPrimeFactorsFound(true);
       setRecoverElapsedMs(performance.now() - startedAt);
@@ -765,6 +796,7 @@ const RSAEncryptor: React.FC = () => {
         phi: msg.phi,
         d: nextD,
       });
+      setShowRecoveredFactors(true);
       setPrimeFactorsFound(true);
       setRecoverElapsedMs(performance.now() - startedAt);
       setRecoverWorking(false);
@@ -828,6 +860,10 @@ const RSAEncryptor: React.FC = () => {
     setQInput('');
     setEInput(DEFAULT_E);
     setNInput('');
+    setPhiValue('');
+    setDValue('');
+    setComputedKeySnapshot(null);
+    setShowRecoveredFactors(false);
   };
 
   const clearTextBlocks = () => {
@@ -847,6 +883,13 @@ const RSAEncryptor: React.FC = () => {
       setError(`Maximum size is ${primeGenMaxForType} ${primeGenSizeType}.`);
       return;
     }
+
+    // Generation acts as a clear for derived key outputs.
+    setNInput('');
+    setPhiValue('');
+    setDValue('');
+    setComputedKeySnapshot(null);
+    setShowRecoveredFactors(false);
 
     terminatePrimeGenWorkers();
     const workerCount = Math.max(
@@ -884,6 +927,11 @@ const RSAEncryptor: React.FC = () => {
       if (!p || !q) return;
       setPInput(p);
       setQInput(q);
+      try {
+        setNInput((BigInt(p) * BigInt(q)).toString());
+      } catch {
+        setNInput('');
+      }
       setPrimeGenWorking(false);
       terminatePrimeGenWorkers();
     };
@@ -962,7 +1010,9 @@ const RSAEncryptor: React.FC = () => {
           <button
             type="button"
             onClick={generatePrimes}
-            disabled={working || recoverWorking || primeGenWorking}
+            disabled={
+              working || recoverWorking || computeWorking || primeGenWorking
+            }
             className={primaryButtonClass}
           >
             {primeGenWorking ? 'Generating…' : 'Generate Primes'}
@@ -1015,37 +1065,87 @@ const RSAEncryptor: React.FC = () => {
           minRows={1}
           rows={4}
         />
-        <NumericInput
-          label={
-            <span>
-              Public exponent <MathText>e</MathText>
-            </span>
-          }
-          value={eInput}
-          onChange={setEInput}
-          placeholder={DEFAULT_E}
-          minRows={1}
-          rows={4}
-        />
-        <NumericInput
-          label={
-            <span>
-              Modulus <MathText>n</MathText>
-            </span>
-          }
-          value={nInput}
-          onChange={setNInput}
-          placeholder="Modulus n"
-          minRows={1}
-          rows={4}
-        />
       </div>
+
+      {mode === 'decrypt' ? (
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <NumericInput
+            label={
+              <span>
+                Public exp <MathText>e</MathText>
+              </span>
+            }
+            value={eInput}
+            onChange={setEInput}
+            placeholder={DEFAULT_E}
+            minRows={1}
+            rows={4}
+          />
+          <NumericInput
+            label={
+              <span>
+                Private exp <MathText>d</MathText>
+              </span>
+            }
+            value={dValue}
+            onChange={setDValue}
+            placeholder="Private exponent d"
+            minRows={1}
+            rows={4}
+          />
+          <NumericInput
+            label={
+              <span>
+                Modulus <MathText>n</MathText>
+              </span>
+            }
+            value={nInput}
+            onChange={setNInput}
+            placeholder="Modulus n"
+            minRows={1}
+            rows={4}
+          />
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <NumericInput
+            label={
+              <span>
+                Public exponent <MathText>e</MathText>
+              </span>
+            }
+            value={eInput}
+            onChange={setEInput}
+            placeholder={DEFAULT_E}
+            minRows={1}
+            rows={4}
+          />
+          <NumericInput
+            label={
+              <span>
+                Modulus <MathText>n</MathText>
+              </span>
+            }
+            value={nInput}
+            onChange={setNInput}
+            placeholder="Modulus n"
+            minRows={1}
+            rows={4}
+          />
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={computeKeyDetails}
-          disabled={!hasPAndQ || working || recoverWorking || primeGenWorking}
+          disabled={
+            !hasPAndQ ||
+            working ||
+            recoverWorking ||
+            primeGenWorking ||
+            computeWorking
+          }
           className={primaryButtonClass}
         >
           Compute
@@ -1100,6 +1200,12 @@ const RSAEncryptor: React.FC = () => {
               </p>
             </div>
           </div>
+        ) : computeWorking ? (
+          <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
+            Computing{' '}
+            <MathText className="inline">{`n,\\varphi(n),d`}</MathText>
+          </p>
         ) : null}
         <button
           type="button"
@@ -1123,7 +1229,7 @@ const RSAEncryptor: React.FC = () => {
       {computedKeySnapshot ? (
         <div className="mt-4 space-y-3">
           <div className="grid gap-4 md:grid-cols-2">
-            {mode === 'decrypt' ? (
+            {mode === 'decrypt' && showRecoveredFactors ? (
               <div className="space-y-1">
                 <NumericOutput
                   label={
@@ -1158,7 +1264,7 @@ const RSAEncryptor: React.FC = () => {
                 </div>
               </div>
             ) : null}
-            {mode === 'decrypt' ? (
+            {mode === 'decrypt' && showRecoveredFactors ? (
               <div className="space-y-1">
                 <NumericOutput
                   label={
