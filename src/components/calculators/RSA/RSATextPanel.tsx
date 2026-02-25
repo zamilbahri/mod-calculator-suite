@@ -52,8 +52,9 @@ const RSATextPanel = ({
             }
             className={`${inputClass} h-10.5`}
           >
-            <option value="decimal">Decimal blocks</option>
-            <option value="base64">Base64 blocks</option>
+            <option value="decimal">Decimal</option>
+            <option value="base64">Base64</option>
+            <option value="hex">Hex</option>
           </select>
         </label>
       </div>
@@ -62,10 +63,12 @@ const RSATextPanel = ({
         <span className="text-sm text-purple-300">
           {mode === 'encrypt'
             ? 'Text to encrypt (ASCII only)'
-            : `Encrypted text blocks (space-separated ${
+            : `Encrypted text blocks (${
                 ciphertextFormat === 'decimal'
-                  ? 'integers'
-                  : 'Base64 tokens'
+                  ? 'space-separated integers'
+                  : ciphertextFormat === 'base64'
+                    ? 'space-separated Base64 tokens'
+                    : 'hex bytes (spaces allowed) or one hex block per line'
               })`}
         </span>
         <textarea
@@ -77,7 +80,9 @@ const RSATextPanel = ({
               ? 'Enter plaintext'
               : ciphertextFormat === 'decimal'
                 ? 'Enter ciphertext blocks (decimal)'
-                : 'Enter ciphertext blocks (Base64)'
+                : ciphertextFormat === 'base64'
+                  ? 'Enter ciphertext blocks (Base64)'
+                  : 'Enter ciphertext as hex'
           }
           spellCheck={false}
         />
@@ -120,8 +125,13 @@ const RSATextPanel = ({
           <NumericOutput
             label={
               <span>
-                Encrypted Text (space-separated{' '}
-                {ciphertextFormat === 'decimal' ? 'decimal' : 'Base64'} blocks)
+                Encrypted Text (
+                {ciphertextFormat === 'decimal'
+                  ? 'space-separated decimal blocks'
+                  : ciphertextFormat === 'base64'
+                    ? 'space-separated Base64 blocks'
+                    : 'hex blocks, one line per block'}
+                )
               </span>
             }
             value={encryptOutput}

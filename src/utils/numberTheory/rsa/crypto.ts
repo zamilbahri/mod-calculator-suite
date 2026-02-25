@@ -70,6 +70,34 @@ const base64ToBytes = (value: string): Uint8Array => {
   throw new Error('Base64 conversion is not available in this environment.');
 };
 
+const bytesToHex = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) =>
+    byte.toString(16).toUpperCase().padStart(2, '0'),
+  ).join(' ');
+
+const hexToBytes = (hex: string): Uint8Array => {
+  if (hex === '') {
+    throw new Error('Empty hex ciphertext block.');
+  }
+  if (hex.length % 2 !== 0) {
+    throw new Error('Hex ciphertext block must contain an even number of digits.');
+  }
+
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    const pair = hex.slice(i * 2, i * 2 + 2);
+    const parsed = Number.parseInt(pair, 16);
+    if (Number.isNaN(parsed)) {
+      throw new Error('Hex ciphertext block contains invalid characters.');
+    }
+    out[i] = parsed;
+  }
+  return out;
+};
+
+const normalizeHexToken = (value: string): string =>
+  value.replace(/^0x/i, '').replace(/[^0-9a-fA-F]/g, '');
+
 export const formatCiphertextBlocks = (
   blocks: readonly string[],
   format: RsaCiphertextFormat,
@@ -78,9 +106,10 @@ export const formatCiphertextBlocks = (
 
   const encodedBlocks = blocks.map((block, index) => {
     const value = parseBigIntStrict(block, `ciphertext block ${index + 1}`);
+    if (format === 'hex') return bytesToHex(bigIntToBytes(value));
     return bytesToBase64(bigIntToBytes(value));
   });
-  return encodedBlocks.join(' ');
+  return format === 'hex' ? encodedBlocks.join('\n') : encodedBlocks.join(' ');
 };
 
 export const parseCiphertextInputToDecimal = (
@@ -91,6 +120,40 @@ export const parseCiphertextInputToDecimal = (
 
   const trimmed = ciphertext.trim();
   if (trimmed === '') return '';
+
+  if (format === 'hex') {
+    const lines = trimmed
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+
+    let hexBlocks: string[];
+    if (lines.length > 1) {
+      hexBlocks = lines.map((line) => normalizeHexToken(line));
+    } else {
+      const tokens = trimmed.split(/\s+/).filter((token) => token !== '');
+      if (tokens.length === 1) {
+        hexBlocks = [normalizeHexToken(tokens[0])];
+      } else if (tokens.every((token) => /^(?:0x)?[0-9a-fA-F]{2}$/.test(token))) {
+        hexBlocks = [tokens.map((token) => token.replace(/^0x/i, '')).join('')];
+      } else {
+        hexBlocks = tokens.map((token) => normalizeHexToken(token));
+      }
+    }
+
+    const decimalBlocks = hexBlocks.map((hexBlock, index) => {
+      try {
+        const bytes = hexToBytes(hexBlock);
+        return bytesToBigInt(bytes).toString();
+      } catch (cause) {
+        const message =
+          cause instanceof Error ? cause.message : 'Invalid hex token.';
+        throw new Error(`Invalid hex ciphertext block ${index + 1}: ${message}`);
+      }
+    });
+
+    return decimalBlocks.join(' ');
+  }
 
   const tokens = trimmed.split(/\s+/);
   const decimalBlocks = tokens.map((token, index) => {

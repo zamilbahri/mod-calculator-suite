@@ -17,7 +17,6 @@ import type {
   RsaPrimeSizeType,
 } from '../../../types';
 import {
-  MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
   buildAlphabetEncoding,
   buildRsaRecoveryRanges,
@@ -79,6 +78,7 @@ type PrimeGenerateResponse =
 
 const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
+const MAX_RSA_PRIME_BITS_PER_PRIME = 2048;
 const MAX_RSA_PRIME_GEN_THREADS = 2;
 
 const createRsaDecryptWorker = (): Worker =>
@@ -106,14 +106,14 @@ const parseOptionalFactor = (value: string, field: 'p' | 'q'): bigint | null => 
 const RSAEncryptorContainer: React.FC = () => {
   const [mode, setMode] = useState<RsaMode>('encrypt');
   const [encodingMode, setEncodingMode] =
-    useState<RsaEncodingMode>('fixed-width-numeric');
+    useState<RsaEncodingMode>('pkcs1-v1_5');
   const [ciphertextFormat, setCiphertextFormat] =
-    useState<RsaCiphertextFormat>('decimal');
+    useState<RsaCiphertextFormat>('base64');
   const [pInput, setPInput] = useState('');
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_RSA_PUBLIC_EXPONENT);
   const [nInput, setNInput] = useState('');
-  const [primeGenSize, setPrimeGenSize] = useState('');
+  const [primeGenSize, setPrimeGenSize] = useState('512');
   const [primeGenSizeType, setPrimeGenSizeType] =
     useState<RsaPrimeSizeType>('bits');
   const [primeGenWorking, setPrimeGenWorking] = useState(false);
@@ -128,6 +128,7 @@ const RSAEncryptorContainer: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [encryptOutputDecimal, setEncryptOutputDecimal] = useState('');
   const [encryptOutputBase64, setEncryptOutputBase64] = useState('');
+  const [encryptOutputHex, setEncryptOutputHex] = useState('');
   const [decryptOutput, setDecryptOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ioError, setIoError] = useState<string | null>(null);
@@ -206,7 +207,7 @@ const RSAEncryptorContainer: React.FC = () => {
   );
   const primeGenMaxForType =
     primeGenSizeType === 'bits'
-      ? MAX_GENERATED_PRIME_BITS
+      ? MAX_RSA_PRIME_BITS_PER_PRIME
       : MAX_GENERATED_PRIME_DIGITS;
 
   const checkRecoveredFactor = (factor: 'p' | 'q') => {
@@ -245,7 +246,11 @@ const RSAEncryptorContainer: React.FC = () => {
   }, [buildEncoding, nInput]);
 
   const encryptOutput =
-    ciphertextFormat === 'decimal' ? encryptOutputDecimal : encryptOutputBase64;
+    ciphertextFormat === 'decimal'
+      ? encryptOutputDecimal
+      : ciphertextFormat === 'base64'
+        ? encryptOutputBase64
+        : encryptOutputHex;
 
   const computeKeyDetails = async () => {
     setError(null);
@@ -336,6 +341,7 @@ const RSAEncryptorContainer: React.FC = () => {
     setWorking(true);
     setEncryptOutputDecimal('');
     setEncryptOutputBase64('');
+    setEncryptOutputHex('');
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -363,6 +369,7 @@ const RSAEncryptorContainer: React.FC = () => {
 
       setEncryptOutputDecimal(formatCiphertextBlocks(blocks, 'decimal'));
       setEncryptOutputBase64(formatCiphertextBlocks(blocks, 'base64'));
+      setEncryptOutputHex(formatCiphertextBlocks(blocks, 'hex'));
       setDecryptOutput('');
     } catch (cause) {
       setIoError(cause instanceof Error ? cause.message : 'Encryption failed.');
@@ -454,6 +461,7 @@ const RSAEncryptorContainer: React.FC = () => {
       setDecryptOutput(text);
       setEncryptOutputDecimal('');
       setEncryptOutputBase64('');
+      setEncryptOutputHex('');
     } catch (cause) {
       setIoError(cause instanceof Error ? cause.message : 'Decryption failed.');
     } finally {
@@ -657,6 +665,7 @@ const RSAEncryptorContainer: React.FC = () => {
     setMessageInput('');
     setEncryptOutputDecimal('');
     setEncryptOutputBase64('');
+    setEncryptOutputHex('');
     setDecryptOutput('');
     setIoError(null);
   };
@@ -749,7 +758,11 @@ const RSAEncryptorContainer: React.FC = () => {
       return;
     }
     if (primeGenSizeValue > primeGenMaxForType) {
-      setError(`Maximum size is ${primeGenMaxForType} ${primeGenSizeType}.`);
+      setError(
+        primeGenSizeType === 'bits'
+          ? `Maximum size is ${primeGenMaxForType} bits per prime (n can be about 4096 bits).`
+          : `Maximum size is ${primeGenMaxForType} digits.`,
+      );
       return;
     }
 
@@ -855,7 +868,7 @@ const RSAEncryptorContainer: React.FC = () => {
         onPrimeGenSizeChange={setPrimeGenSize}
         primeGenSizeType={primeGenSizeType}
         onPrimeGenSizeTypeChange={setPrimeGenSizeType}
-        maxPrimeBits={MAX_GENERATED_PRIME_BITS}
+        maxPrimeBits={MAX_RSA_PRIME_BITS_PER_PRIME}
         maxPrimeDigits={MAX_GENERATED_PRIME_DIGITS}
       />
 
