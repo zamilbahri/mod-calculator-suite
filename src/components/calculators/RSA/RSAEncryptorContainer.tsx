@@ -1154,7 +1154,7 @@ const RSAEncryptorContainer: React.FC = () => {
         primeGenWorking={primeGenWorking}
         onGeneratePrimes={generatePrimes}
         disableGeneratePrimes={
-          working || recoverWorking || computeWorking || primeGenWorking
+          working || recoverWorking || computeWorking || primeGenWorking || pemWorking
         }
         primeGenSize={primeGenSize}
         onPrimeGenSizeChange={setPrimeGenSize}
