@@ -86,7 +86,7 @@ type ComputedKeySnapshot = {
 type FactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 
 type Mode = 'encrypt' | 'decrypt';
-type EncodingMode = 'fixed-width' | 'radix';
+type EncodingMode = 'fixed-width-numeric' | 'radix' | 'pkcs1-v1_5';
 type RecoverWorkerId = 'balanced' | 'low';
 type PrimeSizeType = 'bits' | 'digits';
 
@@ -150,19 +150,11 @@ const getDefaultBlockSize = (n: bigint, radix: bigint): number => {
   if (n <= 1n || radix <= 1n) return 1;
   let k = 1;
   let value = radix;
-  while (value * radix < n) {
+  while (value * radix <= n) {
     value *= radix;
     k += 1;
   }
   return k;
-};
-
-const getSymbolWidth = (values: Iterable<bigint>): number => {
-  let maxValue = 0n;
-  for (const value of values) {
-    if (value > maxValue) maxValue = value;
-  }
-  return maxValue.toString().length;
 };
 
 const integerSqrt = (n: bigint): bigint => {
@@ -177,9 +169,30 @@ const integerSqrt = (n: bigint): bigint => {
   }
 };
 
+const getModulusByteLength = (n: bigint): number =>
+  Math.max(1, Math.ceil(n.toString(2).length / 8));
+
+const bigIntToBytes = (value: bigint): Uint8Array => {
+  if (value === 0n) return new Uint8Array([0]);
+  let hex = value.toString(16);
+  if (hex.length % 2 === 1) hex = `0${hex}`;
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) {
+    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+};
+
+const bytesToBigInt = (bytes: Uint8Array): bigint => {
+  let acc = 0n;
+  for (const b of bytes) acc = (acc << 8n) + BigInt(b);
+  return acc;
+};
+
 const RSAEncryptor: React.FC = () => {
   const [mode, setMode] = useState<Mode>('encrypt');
-  const [encodingMode, setEncodingMode] = useState<EncodingMode>('fixed-width');
+  const [encodingMode, setEncodingMode] =
+    useState<EncodingMode>('fixed-width-numeric');
   const [pInput, setPInput] = useState('');
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_E);
@@ -188,7 +201,6 @@ const RSAEncryptor: React.FC = () => {
   const [primeGenSizeType, setPrimeGenSizeType] =
     useState<PrimeSizeType>('bits');
   const [primeGenWorking, setPrimeGenWorking] = useState(false);
-  const [phiValue, setPhiValue] = useState('');
   const [dValue, setDValue] = useState('');
   const [computedKeySnapshot, setComputedKeySnapshot] =
     useState<ComputedKeySnapshot | null>(null);
@@ -201,6 +213,7 @@ const RSAEncryptor: React.FC = () => {
   const [encryptOutput, setEncryptOutput] = useState('');
   const [decryptOutput, setDecryptOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [ioError, setIoError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [computeWorking, setComputeWorking] = useState(false);
   const [recoverWorking, setRecoverWorking] = useState(false);
@@ -365,7 +378,6 @@ const RSAEncryptor: React.FC = () => {
       const n = p * q;
       const phi = (p - 1n) * (q - 1n);
       setNInput(n.toString());
-      setPhiValue(phi.toString());
 
       if (eInput.trim() === '') {
         const defaultEs = [65537n, 257n, 17n, 3n];
@@ -440,7 +452,7 @@ const RSAEncryptor: React.FC = () => {
     if (mode !== 'encrypt') return;
     if (messageInput === '') return;
 
-    setError(null);
+    setIoError(null);
     setWorking(true);
     setEncryptOutput('');
 
@@ -458,52 +470,135 @@ const RSAEncryptor: React.FC = () => {
       if (e >= n) throw new Error('e must be smaller than n.');
 
       const encoding = buildAlphabetEncoding();
-      const symbolWidth = getSymbolWidth(encoding.valueToChar.keys());
       const blockSize =
         blockSizeInput.trim() === ''
-          ? defaultBlockSize
+          ? encodingMode === 'fixed-width-numeric'
+            ? defaultBlockSize * 2
+            : defaultBlockSize
           : Number.parseInt(blockSizeInput, 10);
       if (!Number.isInteger(blockSize) || blockSize < 1) {
         throw new Error('Block size must be a positive integer.');
       }
 
-      const symbols: bigint[] = [];
-      for (const rawChar of messageInput) {
-        const ch = encoding.normalizeChar(rawChar);
-        const symbol = encoding.charToValue.get(ch);
-        if (symbol === undefined) {
+      const blocks: string[] = [];
+      const modulusDigits = n.toString().length;
+
+      if (encodingMode === 'pkcs1-v1_5') {
+        const messageBytes = new TextEncoder().encode(messageInput);
+        const k = getModulusByteLength(n);
+        const padLength = k - 3 - messageBytes.length;
+        if (padLength < 8) {
           throw new Error(
-            `Character "${rawChar}" is not present in the selected alphabet.`,
+            'Message too long for PKCS#1 v1.5 with this modulus.',
           );
         }
-        symbols.push(symbol);
-      }
 
-      const blocks: string[] = [];
-      for (let i = 0; i < symbols.length; i += blockSize) {
-        const chunk = symbols.slice(i, i + blockSize);
-        let m = 0n;
-        if (encodingMode === 'fixed-width') {
-          const packed = chunk
-            .map((symbol) => symbol.toString().padStart(symbolWidth, '0'))
-            .join('');
-          m = BigInt(packed);
-        } else {
-          for (const symbol of chunk) {
-            m = m * encoding.radix + symbol;
+        const em = new Uint8Array(k);
+        em[0] = 0x00;
+        em[1] = 0x02;
+        const ps = new Uint8Array(padLength);
+        crypto.getRandomValues(ps);
+        // Minor optimization note: this per-byte refill allocates a 1-byte buffer in the loop.
+        // Could be replaced with a reused scratch buffer (or pooled random bytes) to cut tiny allocations.
+        for (let i = 0; i < ps.length; i += 1) {
+          while (ps[i] === 0) {
+            const refill = new Uint8Array(1);
+            crypto.getRandomValues(refill);
+            ps[i] = refill[0];
           }
         }
-        if (m >= n)
+        em.set(ps, 2);
+        em[2 + padLength] = 0x00;
+        em.set(messageBytes, 3 + padLength);
+
+        const m = bytesToBigInt(em);
+        if (m >= n) {
           throw new Error(
-            'A plaintext block is >= n. Reduce block size or increase n.',
+            'PKCS#1 encoded message is >= n. Use a larger modulus.',
           );
+        }
         blocks.push(modPow(m, e, n).toString());
+      } else {
+        const symbols: bigint[] = [];
+        for (const rawChar of messageInput) {
+          if (encodingMode === 'fixed-width-numeric' && /\s/.test(rawChar))
+            continue;
+          const ch = encoding.normalizeChar(rawChar);
+          const symbol = encoding.charToValue.get(ch);
+          if (symbol === undefined) {
+            throw new Error(
+              `Character "${rawChar}" is not present in the selected alphabet.`,
+            );
+          }
+          symbols.push(symbol);
+        }
+
+        if (encodingMode === 'fixed-width-numeric') {
+          if (blockSize % 2 !== 0) {
+            throw new Error(
+              'Fixed-width numeric slicing block size must be even.',
+            );
+          }
+
+          const xSymbol = encoding.charToValue.get(encoding.normalizeChar('X'));
+          if (xSymbol === undefined) {
+            throw new Error(
+              'Alphabet must contain "X" for Fixed-width numeric slicing padding.',
+            );
+          }
+          if (xSymbol < 0n || xSymbol > 99n) {
+            throw new Error(
+              'Fixed-width numeric slicing requires symbol values in [0, 99].',
+            );
+          }
+
+          const numericStream = symbols
+            .map((s) => {
+              if (s < 0n || s > 99n) {
+                throw new Error(
+                  'Fixed-width numeric slicing requires symbol values in [0, 99].',
+                );
+              }
+              return s.toString().padStart(2, '0');
+            })
+            .join('');
+          const padSymbolDigits = xSymbol.toString().padStart(2, '0');
+
+          let i = 0;
+          while (i < numericStream.length) {
+            let digitChunk = numericStream.slice(i, i + blockSize);
+            i += blockSize;
+            while (digitChunk.length < blockSize) digitChunk += padSymbolDigits;
+            const m = BigInt(digitChunk);
+            if (m >= n) {
+              throw new Error(
+                'A plaintext block is >= n. Reduce block size or increase n.',
+              );
+            }
+            const c = modPow(m, e, n).toString().padStart(modulusDigits, '0');
+            blocks.push(c);
+          }
+        } else {
+          for (let i = 0; i < symbols.length; i += blockSize) {
+            const chunk = symbols.slice(i, i + blockSize);
+            let m = 0n;
+            for (const symbol of chunk) {
+              m = m * encoding.radix + symbol;
+            }
+            if (m >= n) {
+              throw new Error(
+                'A plaintext block is >= n. Reduce block size or increase n.',
+              );
+            }
+            blocks.push(modPow(m, e, n).toString());
+          }
+        }
       }
 
       setEncryptOutput(blocks.join(' '));
       setDecryptOutput('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Encryption failed.');
+      setIoError(e instanceof Error ? e.message : 'Encryption failed.');
     } finally {
       setWorking(false);
     }
@@ -512,7 +607,7 @@ const RSAEncryptor: React.FC = () => {
   const decrypt = async () => {
     if (mode !== 'decrypt') return;
 
-    setError(null);
+    setIoError(null);
     setWorking(true);
     setDecryptOutput('');
 
@@ -522,23 +617,63 @@ const RSAEncryptor: React.FC = () => {
       if (messageInput.trim() === '') {
         throw new Error('Encrypted text cannot be empty.');
       }
-      if (
-        dValue.trim() === '' ||
-        phiValue.trim() === '' ||
-        !/^\d+$/.test(dValue)
-      ) {
-        throw new Error(
-          'Compute d first (requires p, q, and e coprime to phi).',
-        );
+      let d: bigint;
+      let n = parseBigIntStrict(nInput, 'n');
+      if (dValue.trim() === '' || !/^\d+$/.test(dValue)) {
+        if (pInput.trim() === '' || qInput.trim() === '') {
+          throw new Error(
+            'Provide secret component d, or use "Recover primes" to compute d',
+          );
+        }
+
+        const p = parseBigIntStrict(pInput, 'p');
+        const q = parseBigIntStrict(qInput, 'q');
+        const derivedN = p * q;
+        const phi = (p - 1n) * (q - 1n);
+
+        let e: bigint;
+        if (eInput.trim() === '') {
+          const defaultEs = [65537n, 257n, 17n, 3n];
+          const selected = defaultEs.find(
+            (candidate) =>
+              candidate > 1n &&
+              candidate < phi &&
+              gcd(candidate, phi) === 1n,
+          );
+          if (!selected) {
+            throw new Error('Could not derive d: no valid default exponent e.');
+          }
+          e = selected;
+          setEInput(e.toString());
+        } else {
+          e = parseBigIntStrict(eInput, 'e');
+        }
+
+        if (e <= 1n || e >= phi || gcd(e, phi) !== 1n) {
+          throw new Error('Cannot derive d: e must be coprime to ϕ and e < ϕ.');
+        }
+
+        d = modInverse(e, phi);
+        n = derivedN;
+        setNInput(derivedN.toString());
+        setDValue(d.toString());
+        setComputedKeySnapshot({
+          p: p.toString(),
+          q: q.toString(),
+          n: derivedN.toString(),
+          phi: phi.toString(),
+          d: d.toString(),
+        });
+      } else {
+        d = parseBigIntStrict(dValue, 'd');
       }
 
-      const d = parseBigIntStrict(dValue, 'd');
-      const n = parseBigIntStrict(nInput, 'n');
       const encoding = buildAlphabetEncoding();
-      const symbolWidth = getSymbolWidth(encoding.valueToChar.keys());
       const blockSize =
         blockSizeInput.trim() === ''
-          ? defaultBlockSize
+          ? encodingMode === 'fixed-width-numeric'
+            ? defaultBlockSize * 2
+            : defaultBlockSize
           : Number.parseInt(blockSizeInput, 10);
       if (!Number.isInteger(blockSize) || blockSize < 1) {
         throw new Error('Block size must be a positive integer.');
@@ -550,13 +685,60 @@ const RSAEncryptor: React.FC = () => {
       for (let i = 0; i < tokens.length; i += 1) {
         const c = parseBigIntStrict(tokens[i], 'ciphertext block');
         const m = modPow(c, d, n);
-        const decoded: string[] = [];
+        if (encodingMode === 'pkcs1-v1_5') {
+          if (tokens.length !== 1) {
+            throw new Error(
+              'PKCS#1 v1.5 mode expects exactly one ciphertext block.',
+            );
+          }
+          const k = getModulusByteLength(n);
+          let em = bigIntToBytes(m);
+          if (em.length > k) {
+            throw new Error('Invalid PKCS#1 block length.');
+          }
+          if (em.length < k) {
+            const padded = new Uint8Array(k);
+            padded.set(em, k - em.length);
+            em = padded;
+          }
+          if (em[0] !== 0x00 || em[1] !== 0x02) {
+            throw new Error('Invalid PKCS#1 v1.5 block header.');
+          }
+          let sep = -1;
+          for (let j = 2; j < em.length; j += 1) {
+            if (em[j] === 0x00) {
+              sep = j;
+              break;
+            }
+          }
+          if (sep < 0)
+            throw new Error('Invalid PKCS#1 v1.5 block: missing separator.');
+          const psLen = sep - 2;
+          if (psLen < 8)
+            throw new Error('Invalid PKCS#1 v1.5 block: padding too short.');
+          // This loop is logically redundant because `sep` is the first 0x00 after index 1.
+          // Kept intentionally as a defensive assertion for future maintenance.
+          for (let j = 2; j < sep; j += 1) {
+            if (em[j] === 0x00) {
+              throw new Error(
+                'Invalid PKCS#1 v1.5 block: padding contains zero byte.',
+              );
+            }
+          }
+          text = new TextDecoder().decode(em.slice(sep + 1));
+          break;
+        }
 
-        if (encodingMode === 'fixed-width') {
-          const digits = m.toString().padStart(blockSize * symbolWidth, '0');
-          for (let j = 0; j < digits.length; j += symbolWidth) {
-            const symbolStr = digits.slice(j, j + symbolWidth);
-            const symbol = BigInt(symbolStr);
+        const decoded: string[] = [];
+        if (encodingMode === 'fixed-width-numeric') {
+          if (blockSize % 2 !== 0) {
+            throw new Error(
+              'Fixed-width numeric slicing block size must be even.',
+            );
+          }
+          const digits = m.toString().padStart(blockSize, '0');
+          for (let j = 0; j < digits.length; j += 2) {
+            const symbol = BigInt(digits.slice(j, j + 2));
             const ch = encoding.valueToChar.get(symbol);
             if (ch === undefined) {
               throw new Error(
@@ -567,7 +749,7 @@ const RSAEncryptor: React.FC = () => {
           }
         } else {
           let value = m;
-          for (let j = 0; j < blockSize; j += 1) {
+          while (value > 0n) {
             const symbol = value % encoding.radix;
             value /= encoding.radix;
             const ch = encoding.valueToChar.get(symbol);
@@ -579,9 +761,12 @@ const RSAEncryptor: React.FC = () => {
             decoded.push(ch);
           }
           decoded.reverse();
-          if (i === tokens.length - 1) {
-            while (decoded.length > 0 && decoded[0] === '\u0000')
-              decoded.shift();
+          if (i !== tokens.length - 1) {
+            while (decoded.length < blockSize) {
+              const ch = encoding.valueToChar.get(0n);
+              if (ch === undefined) break;
+              decoded.unshift(ch);
+            }
           }
         }
 
@@ -591,7 +776,7 @@ const RSAEncryptor: React.FC = () => {
       setDecryptOutput(text);
       setEncryptOutput('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Decryption failed.');
+      setIoError(e instanceof Error ? e.message : 'Decryption failed.');
     } finally {
       setWorking(false);
     }
@@ -653,7 +838,6 @@ const RSAEncryptor: React.FC = () => {
 
       setPInput(p.toString());
       setQInput(q.toString());
-      setPhiValue(phi.toString());
       setDValue(nextD);
       setComputedKeySnapshot({
         p: p.toString(),
@@ -786,7 +970,6 @@ const RSAEncryptor: React.FC = () => {
       resolved = true;
       setPInput(msg.p);
       setQInput(msg.q);
-      setPhiValue(msg.phi);
       const nextD = msg.d !== '' ? msg.d : 'Enter e coprime to ϕ and e < n';
       setDValue(nextD);
       setComputedKeySnapshot({
@@ -860,7 +1043,6 @@ const RSAEncryptor: React.FC = () => {
     setQInput('');
     setEInput(DEFAULT_E);
     setNInput('');
-    setPhiValue('');
     setDValue('');
     setComputedKeySnapshot(null);
     setShowRecoveredFactors(false);
@@ -870,6 +1052,7 @@ const RSAEncryptor: React.FC = () => {
     setMessageInput('');
     setEncryptOutput('');
     setDecryptOutput('');
+    setIoError(null);
   };
 
   const generatePrimes = () => {
@@ -886,7 +1069,6 @@ const RSAEncryptor: React.FC = () => {
 
     // Generation acts as a clear for derived key outputs.
     setNInput('');
-    setPhiValue('');
     setDValue('');
     setComputedKeySnapshot(null);
     setShowRecoveredFactors(false);
@@ -1372,8 +1554,24 @@ const RSAEncryptor: React.FC = () => {
 
       <div className="mt-3 grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-1">
+          <span className="text-sm text-purple-300">Encoding mode</span>
+          <select
+            value={encodingMode}
+            onChange={(e) => setEncodingMode(e.target.value as EncodingMode)}
+            className={`${inputClass} h-10.5`}
+          >
+            <option value="fixed-width-numeric">
+              Fixed-width numeric slicing
+            </option>
+            <option value="radix">Radix (b-adic) packing</option>
+            <option value="pkcs1-v1_5">PKCS#1 v1.5 Padding</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
           <span className="text-sm text-purple-300">
-            Custom block size (symbols per block)
+            {encodingMode === 'fixed-width-numeric'
+              ? 'Block size (digits per block)'
+              : 'Block size (symbols per block)'}
           </span>
           <input
             value={blockSizeInput}
@@ -1383,21 +1581,22 @@ const RSAEncryptor: React.FC = () => {
             }}
             className={`${inputClass} h-10.5`}
             inputMode="numeric"
-            placeholder={`Default: ${defaultBlockSize}`}
+            placeholder={
+              encodingMode === 'fixed-width-numeric'
+                ? `Default: ${defaultBlockSize * 2}`
+                : encodingMode === 'pkcs1-v1_5'
+                  ? 'Disabled for PKCS#1 v1.5'
+                  : `Default: ${defaultBlockSize}`
+            }
+            disabled={encodingMode === 'pkcs1-v1_5'}
           />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-purple-300">Encoding mode</span>
-          <select
-            value={encodingMode}
-            onChange={(e) => setEncodingMode(e.target.value as EncodingMode)}
-            className={`${inputClass} h-10.5`}
-          >
-            <option value="fixed-width">Fixed-width</option>
-            <option value="radix">Radix packing</option>
-          </select>
-        </label>
       </div>
+      {encodingMode === 'pkcs1-v1_5' ? (
+        <p className="mt-1 text-xs italic text-gray-400">
+          PKCS#1 v1.5 uses byte encoding; alphabet settings are ignored.
+        </p>
+      ) : null}
 
       <label className="mt-4 flex flex-col gap-1">
         <span className="text-sm text-purple-300">
@@ -1445,6 +1644,7 @@ const RSAEncryptor: React.FC = () => {
           Clear text
         </button>
       </div>
+      {ioError ? <div className={errorBoxClass}>{ioError}</div> : null}
 
       {mode === 'encrypt' && encryptOutput ? (
         <div className="mt-6">
