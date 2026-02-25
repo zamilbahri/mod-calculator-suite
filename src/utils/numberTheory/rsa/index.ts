@@ -15,6 +15,8 @@ export {
   INVALID_RSA_EXPONENT_HINT,
   computeModulus,
   computePhi,
+  computeLambdaN,
+  computeQInverseModP,
   isValidPublicExponentForPhi,
   selectDefaultPublicExponent,
   computePrivateExponent,

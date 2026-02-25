@@ -12,6 +12,15 @@ export const computeModulus = (p: bigint, q: bigint): bigint => p * q;
 export const computePhi = (p: bigint, q: bigint): bigint =>
   (p - 1n) * (q - 1n);
 
+export const computeLambdaN = (p: bigint, q: bigint): bigint => {
+  const pMinus1 = p - 1n;
+  const qMinus1 = q - 1n;
+  return (pMinus1 / gcd(pMinus1, qMinus1)) * qMinus1;
+};
+
+export const computeQInverseModP = (q: bigint, p: bigint): bigint =>
+  modInverse(q, p);
+
 export const isValidPublicExponentForPhi = (e: bigint, phi: bigint): boolean =>
   e > 1n && e < phi && gcd(e, phi) === 1n;
 
