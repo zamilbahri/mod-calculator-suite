@@ -52,3 +52,21 @@ export interface MatrixShape {
 }
 
 export type BigIntMatrix = bigint[][];
+
+export type {
+  RsaMode,
+  RsaEncodingMode,
+  RsaAlphabetMode,
+  RsaRecoverWorkerId,
+  RsaPrimeSizeType,
+  RsaFactorCheckVerdict,
+  RsaCiphertextFormat,
+  RsaComputedKeySnapshot,
+  RsaDecryptRecoverRequest,
+  RsaDecryptCompletedMessage,
+  RsaDecryptHeartbeatMessage,
+  RsaDecryptNotFoundMessage,
+  RsaDecryptErrorMessage,
+  RsaDecryptWorkerRequest,
+  RsaDecryptWorkerResponse,
+} from './rsa';
