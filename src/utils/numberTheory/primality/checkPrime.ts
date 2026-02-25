@@ -1,11 +1,11 @@
 import type { PrimalityCheckResult } from '../../../types';
+import type { PrimalityCheckOptions } from '../../../types';
 import { PRIMES_LESS_THAN_1K, TWO_POW_64 } from './constants';
 import { isBPSWProbablePrime } from './bpsw';
 import {
   isMillerRabinProbablePrime,
   millerRabinErrorProbabilityExponent,
 } from './millerRabin';
-import type { PrimalityCheckOptions } from '../index';
 
 export function primalityCheck(
   n: bigint,

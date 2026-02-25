@@ -1,48 +1,17 @@
 /// <reference lib="webworker" />
 
 import { generatePrimesWithProgress } from '../utils/numberTheory';
-import type { PrimeGenerationOptions } from '../types';
-
-type GenerateRequest = {
-  type: 'generate';
-  jobId: number;
-  options: PrimeGenerationOptions;
-};
-
-type WorkerRequest = GenerateRequest;
-
-type ProgressMessage = {
-  type: 'progress';
-  jobId: number;
-  completed: number;
-  total: number;
-  prime: string;
-};
-
-type HeartbeatMessage = {
-  type: 'heartbeat';
-  jobId: number;
-  primeIndex: number;
-  total: number;
-  attempts: number;
-};
-
-type CompletedMessage = {
-  type: 'completed';
-  jobId: number;
-  elapsedMs: number;
-  primes: string[];
-};
-
-type ErrorMessage = {
-  type: 'error';
-  jobId: number;
-  message: string;
-};
+import type {
+  PrimeGeneratorWorkerCompletedMessage,
+  PrimeGeneratorWorkerErrorMessage,
+  PrimeGeneratorWorkerHeartbeatMessage,
+  PrimeGeneratorWorkerProgressMessage,
+  PrimeGeneratorWorkerRequest,
+} from '../types';
 
 const ctx: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope;
 
-ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
+ctx.onmessage = async (event: MessageEvent<PrimeGeneratorWorkerRequest>) => {
   const msg = event.data;
   if (msg.type !== 'generate') return;
 
@@ -52,7 +21,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const primes = await generatePrimesWithProgress(
       msg.options,
       (completed, total, prime) => {
-        const progress: ProgressMessage = {
+        const progress: PrimeGeneratorWorkerProgressMessage = {
           type: 'progress',
           jobId: msg.jobId,
           completed,
@@ -65,7 +34,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         const now = performance.now();
         if (now - lastHeartbeatTs < 500) return;
         lastHeartbeatTs = now;
-        const heartbeat: HeartbeatMessage = {
+        const heartbeat: PrimeGeneratorWorkerHeartbeatMessage = {
           type: 'heartbeat',
           jobId: msg.jobId,
           primeIndex,
@@ -76,7 +45,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       },
     );
 
-    const done: CompletedMessage = {
+    const done: PrimeGeneratorWorkerCompletedMessage = {
       type: 'completed',
       jobId: msg.jobId,
       elapsedMs: performance.now() - start,
@@ -84,7 +53,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     };
     ctx.postMessage(done);
   } catch (e) {
-    const err: ErrorMessage = {
+    const err: PrimeGeneratorWorkerErrorMessage = {
       type: 'error',
       jobId: msg.jobId,
       message: e instanceof Error ? e.message : 'Failed to generate primes.',
