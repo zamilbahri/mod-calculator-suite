@@ -48,7 +48,8 @@ export const buildAlphabetEncoding = ({
     };
   }
 
-  if (customAlphabet === '') throw new Error('Custom alphabet cannot be empty.');
+  if (customAlphabet === '')
+    throw new Error('Custom alphabet cannot be empty.');
   if (!isAsciiOnly(customAlphabet)) {
     throw new Error('Custom alphabet must use ASCII characters only.');
   }
@@ -57,7 +58,9 @@ export const buildAlphabetEncoding = ({
     customOffset.trim() === '' ? '0' : customOffset,
     'alphabet offset',
   );
-  const source = customIgnoreCase ? customAlphabet.toUpperCase() : customAlphabet;
+  const source = customIgnoreCase
+    ? customAlphabet.toUpperCase()
+    : customAlphabet;
 
   for (let i = 0; i < source.length; i += 1) {
     const ch = source[i];
