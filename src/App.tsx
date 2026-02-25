@@ -7,7 +7,7 @@ import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
 import PrimeChecker from './components/calculators/PrimeChecker';
 import PrimeGenerator from './components/calculators/PrimeGenerator';
-import RSAEncryptor from './components/calculators/RSAEncryptor';
+import RSAEncryptorContainer from './components/calculators/RSA/RSAEncryptorContainer';
 
 const App: React.FC = () => {
   return (
@@ -109,7 +109,7 @@ const App: React.FC = () => {
               </span>
             }
           >
-            <RSAEncryptor />
+            <RSAEncryptorContainer />
           </CalculatorCard>
         </div>
       </div>
