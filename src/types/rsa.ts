@@ -1,3 +1,5 @@
+import type { PrimeSizeType } from './numberTheory';
+
 export type RsaMode = 'encrypt' | 'decrypt';
 
 export type RsaEncodingMode = 'fixed-width-numeric' | 'radix' | 'pkcs1-v1_5';
@@ -6,7 +8,7 @@ export type RsaAlphabetMode = 'ascii' | 'custom';
 
 export type RsaRecoverWorkerId = 'balanced' | 'low';
 
-export type RsaPrimeSizeType = 'bits' | 'digits';
+export type RsaPrimeSizeType = PrimeSizeType;
 
 export type RsaFactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 

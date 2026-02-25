@@ -1,12 +1,8 @@
+import type { PrimeGenerationCountPolicy } from '../../../types';
+
 export const TWO_POW_64 = 1n << 64n;
 export const MAX_GENERATED_PRIME_BITS = 4096;
 export const MAX_GENERATED_PRIME_DIGITS = 1300;
-
-export interface PrimeGenerationCountPolicy {
-  maxBits: number;
-  maxCount: number;
-  warnAt: number;
-}
 
 export const PRIME_GENERATION_COUNT_POLICIES: PrimeGenerationCountPolicy[] = [
   { maxBits: 1536, maxCount: 10, warnAt: 11 }, // don't display warning if less than 1536 bits

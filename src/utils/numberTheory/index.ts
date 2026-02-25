@@ -15,7 +15,6 @@ export {
 export {
   MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
-  type PrimeGenerationCountPolicy,
 } from './primality/constants';
 export {
   DEFAULT_CUSTOM_ALPHABET,
@@ -69,4 +68,12 @@ export type {
   PrimalityCheckOptions,
   PrimeSizeType,
   PrimeGenerationOptions,
-} from '../../types/index';
+  PrimeGenerationCountPolicy,
+  PrimeGeneratorWorkerGenerateRequest,
+  PrimeGeneratorWorkerRequest,
+  PrimeGeneratorWorkerProgressMessage,
+  PrimeGeneratorWorkerHeartbeatMessage,
+  PrimeGeneratorWorkerCompletedMessage,
+  PrimeGeneratorWorkerErrorMessage,
+  PrimeGeneratorWorkerResponse,
+} from '../../types';
