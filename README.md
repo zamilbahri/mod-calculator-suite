@@ -1,73 +1,69 @@
-# React + TypeScript + Vite
+# Modular Calculator Suite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript calculator suite for RSA workflows and modular number theory operations.
 
-Currently, two official plugins are available:
+## Calculator Overview (in UI order)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### RSA and Primes
 
-## React Compiler
+1. **RSA Calculator**
+   - Supports RSA encryption/decryption with configurable key inputs and key derivation tools.
+   - Implemented encoding modes:
+     - Fixed-width numeric slicing
+     - Radix (b-adic) packing
+     - PKCS#1 v1.5 padding
+   - Includes a **Recover primes** decryption option for moduli where `n < 2^72`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. **Prime Generator**
+   - Generates probable primes by bit size or digit size.
+   - Supports generation of up to 10 primes, with count limits by size policy:
 
-## Expanding the ESLint configuration
+   | Max Prime Size (bits) | Max Count | Warning Starts At |
+   | --------------------- | --------- | ----------------- |
+   | 1536                  | 10        | 11 (No warning)   |
+   | 2048                  | 10        | 5                 |
+   | 3072                  | 4         | 2                 |
+   | 4096                  | 4         | 1                 |
+   - Prime generation is multithreaded, and the user can set the number of worker threads.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+3. **Prime Checker**
+   - Uses Baillie-PSW and Miller-Rabin primality testing.
+   - For `n < 2^64`, Baillie-PSW is used.
+   - For larger values, Miller-Rabin is used with a default of 24 rounds.
+   - The user can configure the number of Miller-Rabin rounds.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Modular Number Theory
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. **EGCD and Modular Inverse Calculator**
+   - Computes `gcd(a, b)`, Bézout coefficients, and modular inverses.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. **Fast Exponentiation**
+   - Computes `a^n mod m` using square-and-multiply.
+
+3. **CRT Solver**
+   - Solves systems of congruences with pairwise coprime moduli.
+
+## Development
+
+### Requirements
+
+- Node.js 20+
+- npm
+
+### Install
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Run (dev server)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Build
+
+```bash
+npm run build
 ```
