@@ -126,7 +126,8 @@ const RSAEncryptorContainer: React.FC = () => {
   const [customOffset, setCustomOffset] = useState('0');
   const [blockSizeInput, setBlockSizeInput] = useState('');
   const [messageInput, setMessageInput] = useState('');
-  const [encryptOutput, setEncryptOutput] = useState('');
+  const [encryptOutputDecimal, setEncryptOutputDecimal] = useState('');
+  const [encryptOutputBase64, setEncryptOutputBase64] = useState('');
   const [decryptOutput, setDecryptOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ioError, setIoError] = useState<string | null>(null);
@@ -243,6 +244,9 @@ const RSAEncryptorContainer: React.FC = () => {
     }
   }, [buildEncoding, nInput]);
 
+  const encryptOutput =
+    ciphertextFormat === 'decimal' ? encryptOutputDecimal : encryptOutputBase64;
+
   const computeKeyDetails = async () => {
     setError(null);
     setComputeWorking(true);
@@ -330,7 +334,8 @@ const RSAEncryptorContainer: React.FC = () => {
 
     setIoError(null);
     setWorking(true);
-    setEncryptOutput('');
+    setEncryptOutputDecimal('');
+    setEncryptOutputBase64('');
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -356,7 +361,8 @@ const RSAEncryptorContainer: React.FC = () => {
         encoding,
       });
 
-      setEncryptOutput(formatCiphertextBlocks(blocks, ciphertextFormat));
+      setEncryptOutputDecimal(formatCiphertextBlocks(blocks, 'decimal'));
+      setEncryptOutputBase64(formatCiphertextBlocks(blocks, 'base64'));
       setDecryptOutput('');
     } catch (cause) {
       setIoError(cause instanceof Error ? cause.message : 'Encryption failed.');
@@ -446,7 +452,8 @@ const RSAEncryptorContainer: React.FC = () => {
       });
 
       setDecryptOutput(text);
-      setEncryptOutput('');
+      setEncryptOutputDecimal('');
+      setEncryptOutputBase64('');
     } catch (cause) {
       setIoError(cause instanceof Error ? cause.message : 'Decryption failed.');
     } finally {
@@ -648,14 +655,14 @@ const RSAEncryptorContainer: React.FC = () => {
 
   const clearTextBlocks = () => {
     setMessageInput('');
-    setEncryptOutput('');
+    setEncryptOutputDecimal('');
+    setEncryptOutputBase64('');
     setDecryptOutput('');
     setIoError(null);
   };
 
   const handleCiphertextFormatChange = (nextFormat: RsaCiphertextFormat) => {
     setCiphertextFormat(nextFormat);
-    setEncryptOutput('');
     setIoError(null);
   };
 
