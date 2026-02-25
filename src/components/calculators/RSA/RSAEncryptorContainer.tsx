@@ -66,6 +66,22 @@ type PrimeGenerateCompletedMessage = {
   primes: string[];
 };
 
+type PrimeGenerateProgressMessage = {
+  type: 'progress';
+  jobId: number;
+  completed: number;
+  total: number;
+  prime: string;
+};
+
+type PrimeGenerateHeartbeatMessage = {
+  type: 'heartbeat';
+  jobId: number;
+  primeIndex: number;
+  total: number;
+  attempts: number;
+};
+
 type PrimeGenerateErrorMessage = {
   type: 'error';
   jobId: number;
@@ -74,12 +90,15 @@ type PrimeGenerateErrorMessage = {
 
 type PrimeGenerateResponse =
   | PrimeGenerateCompletedMessage
+  | PrimeGenerateProgressMessage
+  | PrimeGenerateHeartbeatMessage
   | PrimeGenerateErrorMessage;
 
 const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
 const MAX_RSA_PRIME_BITS_PER_PRIME = 2048;
 const MAX_RSA_PRIME_GEN_THREADS = 2;
+const DEFAULT_RSA_PRIME_BITS_PER_PRIME = 512;
 
 const createRsaDecryptWorker = (): Worker =>
   new Worker(new URL('../../../workers/rsaDecrypt.worker.ts', import.meta.url), {
@@ -113,7 +132,9 @@ const RSAEncryptorContainer: React.FC = () => {
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_RSA_PUBLIC_EXPONENT);
   const [nInput, setNInput] = useState('');
-  const [primeGenSize, setPrimeGenSize] = useState('512');
+  const [primeGenSize, setPrimeGenSize] = useState(
+    DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString(),
+  );
   const [primeGenSizeType, setPrimeGenSizeType] =
     useState<RsaPrimeSizeType>('bits');
   const [primeGenWorking, setPrimeGenWorking] = useState(false);
@@ -333,9 +354,193 @@ const RSAEncryptorContainer: React.FC = () => {
     }
   };
 
+  const resolvePrimeGenerationOptionsForEncrypt = (): {
+    size: number;
+    sizeType: RsaPrimeSizeType;
+    usedDefault: boolean;
+  } => {
+    const parsedSize = Number.parseInt(primeGenSize, 10);
+    if (Number.isInteger(parsedSize) && parsedSize > 0) {
+      if (
+        primeGenSizeType === 'bits' &&
+        parsedSize <= MAX_RSA_PRIME_BITS_PER_PRIME
+      ) {
+        return { size: parsedSize, sizeType: 'bits', usedDefault: false };
+      }
+      if (
+        primeGenSizeType === 'digits' &&
+        parsedSize <= MAX_GENERATED_PRIME_DIGITS
+      ) {
+        return { size: parsedSize, sizeType: 'digits', usedDefault: false };
+      }
+    }
+
+    return {
+      size: DEFAULT_RSA_PRIME_BITS_PER_PRIME,
+      sizeType: 'bits',
+      usedDefault: true,
+    };
+  };
+
+  const generateSinglePrimeForEncrypt = (
+    size: number,
+    sizeType: RsaPrimeSizeType,
+  ): Promise<bigint> =>
+    new Promise((resolve, reject) => {
+      const worker = createPrimeGeneratorWorker();
+      const jobId = ++primeGenJobIdRef.current;
+      const cleanup = () => worker.terminate();
+
+      worker.onmessage = (event: MessageEvent<PrimeGenerateResponse>) => {
+        const msg = event.data;
+        if (msg.jobId !== jobId) return;
+
+        if (msg.type === 'error') {
+          cleanup();
+          reject(new Error(msg.message));
+          return;
+        }
+
+        if (msg.type !== 'completed') return;
+
+        cleanup();
+        const generated = msg.primes[0];
+        if (!generated) {
+          reject(new Error('Prime generation worker returned no prime.'));
+          return;
+        }
+
+        try {
+          resolve(parseBigIntStrict(generated, 'generated prime'));
+        } catch (cause) {
+          reject(
+            cause instanceof Error
+              ? cause
+              : new Error('Generated prime was invalid.'),
+          );
+        }
+      };
+
+      worker.onerror = () => {
+        cleanup();
+        reject(new Error('Prime generation worker failed.'));
+      };
+
+      const request: PrimeGenerateRequest = {
+        type: 'generate',
+        jobId,
+        options: {
+          size,
+          sizeType,
+          count: 1,
+        },
+      };
+      worker.postMessage(request);
+    });
+
+  const generateDistinctPrimeForEncrypt = async (
+    options: { size: number; sizeType: RsaPrimeSizeType },
+    disallow: Set<bigint>,
+  ): Promise<bigint> => {
+    while (true) {
+      const candidate = await generateSinglePrimeForEncrypt(
+        options.size,
+        options.sizeType,
+      );
+      if (!disallow.has(candidate)) return candidate;
+    }
+  };
+
+  const resolveEncryptKeyMaterial = async (): Promise<{ e: bigint; n: bigint }> => {
+    let p: bigint | null = null;
+    let q: bigint | null = null;
+
+    if (pInput.trim() !== '') {
+      p = parseBigIntStrict(pInput, 'p');
+      if (!primalityCheck(p).isProbablePrime) {
+        throw new Error('p must be prime.');
+      }
+    }
+    if (qInput.trim() !== '') {
+      q = parseBigIntStrict(qInput, 'q');
+      if (!primalityCheck(q).isProbablePrime) {
+        throw new Error('q must be prime.');
+      }
+    }
+
+    if (p !== null && q !== null && p === q) {
+      throw new Error('p and q must be distinct primes.');
+    }
+
+    if (p === null || q === null) {
+      const options = resolvePrimeGenerationOptionsForEncrypt();
+      if (options.usedDefault) {
+        setPrimeGenSize(DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString());
+        setPrimeGenSizeType('bits');
+      }
+
+      const disallow = new Set<bigint>();
+      if (p !== null) disallow.add(p);
+      if (q !== null) disallow.add(q);
+
+      if (p === null) {
+        p = await generateDistinctPrimeForEncrypt(options, disallow);
+        disallow.add(p);
+      }
+      if (q === null) {
+        q = await generateDistinctPrimeForEncrypt(options, disallow);
+      }
+
+      setPInput(p.toString());
+      setQInput(q.toString());
+    }
+
+    const n = computeModulus(p, q);
+    const phi = computePhi(p, q);
+
+    let e: bigint;
+    if (eInput.trim() === '') {
+      const selectedE = selectDefaultPublicExponent(phi);
+      if (!selectedE) {
+        throw new Error('Could not derive e for encryption.');
+      }
+      e = selectedE;
+      setEInput(e.toString());
+    } else {
+      e = parseBigIntStrict(eInput, 'e');
+      if (!isValidPublicExponentForPhi(e, phi)) {
+        throw new Error('e must be coprime to \u03D5 and e < \u03D5.');
+      }
+    }
+
+    const d = computePrivateExponent(e, phi).toString();
+    setNInput(n.toString());
+    setDValue(d);
+    setComputedKeySnapshot({
+      p: p.toString(),
+      q: q.toString(),
+      n: n.toString(),
+      phi: phi.toString(),
+      d,
+    });
+    setShowRecoveredFactors(false);
+    setPrimeFactorsFound(false);
+    setRecoverElapsedMs(null);
+    setRecoverAttemptCounts({ balanced: 0, low: 0 });
+    setPFactorCheck(null);
+    setQFactorCheck(null);
+    clearPemOutputs();
+
+    return { e, n };
+  };
+
   const encrypt = async () => {
     if (mode !== 'encrypt') return;
     if (messageInput === '') return;
+    if (primeGenWorking || computeWorking || pemWorking) {
+      setIoError('Wait for current key operations to finish.');
+      return;
+    }
 
     setIoError(null);
     setWorking(true);
@@ -349,8 +554,7 @@ const RSAEncryptorContainer: React.FC = () => {
         throw new Error('Text to encrypt must contain ASCII characters only.');
       }
 
-      const e = parseBigIntStrict(eInput, 'e');
-      const n = parseBigIntStrict(nInput, 'n');
+      const { e, n } = await resolveEncryptKeyMaterial();
       const encoding = buildEncoding();
       const blockSize = resolveRsaBlockSize({
         blockSizeInput,
@@ -670,6 +874,54 @@ const RSAEncryptorContainer: React.FC = () => {
     setIoError(null);
   };
 
+  const clearAll = () => {
+    terminateRecoverWorkers();
+    recoverStartedAtRef.current = 0;
+    setRecoverWorking(false);
+    setRecoverLiveElapsedMs(0);
+
+    terminatePrimeGenWorkers();
+    setPrimeGenWorking(false);
+
+    setMode('encrypt');
+    setEncodingMode('pkcs1-v1_5');
+    setCiphertextFormat('base64');
+
+    setPInput('');
+    setQInput('');
+    setEInput(DEFAULT_RSA_PUBLIC_EXPONENT);
+    setNInput('');
+    setDValue('');
+    setComputedKeySnapshot(null);
+
+    setPrimeGenSize(DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString());
+    setPrimeGenSizeType('bits');
+
+    setAlphabetMode('ascii');
+    setCustomAlphabet(DEFAULT_CUSTOM_ALPHABET);
+    setCustomIgnoreCase(true);
+    setCustomOffset('0');
+    setBlockSizeInput('');
+
+    setMessageInput('');
+    setEncryptOutputDecimal('');
+    setEncryptOutputBase64('');
+    setEncryptOutputHex('');
+    setDecryptOutput('');
+
+    setError(null);
+    setIoError(null);
+
+    setPrimeFactorsFound(false);
+    setShowRecoveredFactors(false);
+    setRecoverElapsedMs(null);
+    setRecoverAttemptCounts({ balanced: 0, low: 0 });
+    setPFactorCheck(null);
+    setQFactorCheck(null);
+
+    clearPemOutputs();
+  };
+
   const handleCiphertextFormatChange = (nextFormat: RsaCiphertextFormat) => {
     setCiphertextFormat(nextFormat);
     setIoError(null);
@@ -838,6 +1090,8 @@ const RSAEncryptorContainer: React.FC = () => {
           return;
         }
 
+        if (msg.type !== 'completed') return;
+
         const prime = msg.primes[0];
         if (prime) found.add(prime);
         if (found.size >= 2) {
@@ -955,6 +1209,10 @@ const RSAEncryptorContainer: React.FC = () => {
         onEncrypt={encrypt}
         onDecrypt={decrypt}
         onClearTextBlocks={clearTextBlocks}
+        onClearAll={clearAll}
+        disableClearAll={
+          working || recoverWorking || computeWorking || primeGenWorking || pemWorking
+        }
         working={working}
         recoverWorking={recoverWorking}
         ioError={ioError}

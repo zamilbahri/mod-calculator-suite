@@ -9,6 +9,9 @@ export const primaryButtonClass =
 export const secondaryButtonClass =
   'px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 hover:bg-gray-600';
 
+export const dangerButtonClass =
+  'px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 disabled:opacity-60';
+
 export const tertiaryButtonClass =
   'text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600 disabled:opacity-50';
 

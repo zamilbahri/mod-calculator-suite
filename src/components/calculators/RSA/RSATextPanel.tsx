@@ -1,6 +1,7 @@
 import type { RsaCiphertextFormat, RsaMode } from '../../../types';
 import NumericOutput from '../../shared/NumericOutput';
 import {
+  dangerButtonClass,
   errorBoxClass,
   inputClass,
   primaryButtonClass,
@@ -16,6 +17,8 @@ type Props = {
   onEncrypt: () => void;
   onDecrypt: () => void;
   onClearTextBlocks: () => void;
+  onClearAll: () => void;
+  disableClearAll: boolean;
   working: boolean;
   recoverWorking: boolean;
   ioError: string | null;
@@ -32,6 +35,8 @@ const RSATextPanel = ({
   onEncrypt,
   onDecrypt,
   onClearTextBlocks,
+  onClearAll,
+  disableClearAll,
   working,
   recoverWorking,
   ioError,
@@ -115,6 +120,14 @@ const RSATextPanel = ({
           className={secondaryButtonClass}
         >
           Clear text
+        </button>
+        <button
+          type="button"
+          onClick={onClearAll}
+          disabled={disableClearAll}
+          className={dangerButtonClass}
+        >
+          Clear all
         </button>
       </div>
 
