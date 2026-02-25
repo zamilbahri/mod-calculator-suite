@@ -1,7 +1,6 @@
 import React from 'react';
 import Header from './components/Header';
 import CalculatorCard from './components/CalculatorCard';
-import MultiplyLargeNumbers from './components/calculators/MultiplyLargeNumbers';
 import MathText from './components/shared/MathText';
 import GCDCalculator from './components/calculators/GCDCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
@@ -17,23 +16,6 @@ const App: React.FC = () => {
         <Header />
 
         <div className="mt-8">
-          <CalculatorCard
-            title="Multiply Large Numbers"
-            subtitle={
-              <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
-                <span>Compute</span>
-                <MathText className="text-purple-200">
-                  {'n = p \\cdot q'}
-                </MathText>
-                <span>where</span>
-                <MathText className="text-purple-200">{'p, q'}</MathText>
-                <span>are large integers (hundreds of digits or more).</span>
-              </span>
-            }
-          >
-            <MultiplyLargeNumbers />
-          </CalculatorCard>
-
           <CalculatorCard
             title="EGCD and Modular Inverse Calculator"
             subtitle={
@@ -120,7 +102,9 @@ const App: React.FC = () => {
                 <span>Encrypt text using</span>
                 <MathText className="text-purple-200">{'(e, n)'}</MathText>
                 <span>or build</span>
-                <MathText className="text-purple-200">{'n = p \\cdot q'}</MathText>
+                <MathText className="text-purple-200">
+                  {'n = p \\cdot q'}
+                </MathText>
                 <span>from primes.</span>
               </span>
             }
