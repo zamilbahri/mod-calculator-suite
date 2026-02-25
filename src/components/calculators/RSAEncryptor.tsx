@@ -88,9 +88,40 @@ type FactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 type Mode = 'encrypt' | 'decrypt';
 type EncodingMode = 'fixed-width' | 'radix';
 type RecoverWorkerId = 'balanced' | 'low';
+type PrimeSizeType = 'bits' | 'digits';
+
+type PrimeGenerateRequest = {
+  type: 'generate';
+  jobId: number;
+  options: {
+    size: number;
+    sizeType: PrimeSizeType;
+    count: number;
+  };
+};
+
+type PrimeGenerateCompletedMessage = {
+  type: 'completed';
+  jobId: number;
+  elapsedMs: number;
+  primes: string[];
+};
+
+type PrimeGenerateErrorMessage = {
+  type: 'error';
+  jobId: number;
+  message: string;
+};
+
+type PrimeGenerateResponse =
+  | PrimeGenerateCompletedMessage
+  | PrimeGenerateErrorMessage;
 
 const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
+const MAX_RSA_PRIME_BITS = 2048;
+const MAX_RSA_PRIME_DIGITS = 617;
+const MAX_RSA_PRIME_GEN_THREADS = 2;
 const DEFAULT_E = '65537';
 const DEFAULT_CUSTOM_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const WHEEL_PRECHECK_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
@@ -100,6 +131,13 @@ const createRsaDecryptWorker = (): Worker =>
   new Worker(new URL('../../workers/rsaDecrypt.worker.ts', import.meta.url), {
     type: 'module',
   });
+const createPrimeGeneratorWorker = (): Worker =>
+  new Worker(
+    new URL('../../workers/primeGenerator.worker.ts', import.meta.url),
+    {
+      type: 'module',
+    },
+  );
 
 const isAsciiOnly = (value: string): boolean => {
   for (let i = 0; i < value.length; i += 1) {
@@ -146,6 +184,10 @@ const RSAEncryptor: React.FC = () => {
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_E);
   const [nInput, setNInput] = useState('');
+  const [primeGenSize, setPrimeGenSize] = useState('');
+  const [primeGenSizeType, setPrimeGenSizeType] =
+    useState<PrimeSizeType>('bits');
+  const [primeGenWorking, setPrimeGenWorking] = useState(false);
   const [phiValue, setPhiValue] = useState('');
   const [dValue, setDValue] = useState('');
   const [computedKeySnapshot, setComputedKeySnapshot] =
@@ -178,14 +220,27 @@ const RSAEncryptor: React.FC = () => {
   const recoverWorkersRef = useRef<Worker[]>([]);
   const recoverJobIdRef = useRef(0);
   const recoverStartedAtRef = useRef(0);
+  const primeGenWorkersRef = useRef<Worker[]>([]);
+  const primeGenJobIdRef = useRef(0);
+  const primeGenRunIdRef = useRef(0);
+  const primeGenWorkerJobIdRef = useRef(new Map<Worker, number>());
 
   const terminateRecoverWorkers = () => {
     for (const worker of recoverWorkersRef.current) worker.terminate();
     recoverWorkersRef.current = [];
   };
+  const terminatePrimeGenWorkers = () => {
+    primeGenRunIdRef.current += 1;
+    for (const worker of primeGenWorkersRef.current) worker.terminate();
+    primeGenWorkersRef.current = [];
+    primeGenWorkerJobIdRef.current.clear();
+  };
 
   useEffect(() => {
-    return () => terminateRecoverWorkers();
+    return () => {
+      terminateRecoverWorkers();
+      terminatePrimeGenWorkers();
+    };
   }, []);
 
   useEffect(() => {
@@ -208,6 +263,12 @@ const RSAEncryptor: React.FC = () => {
   }, [computedKeySnapshot]);
 
   const hasPAndQ = pInput.trim() !== '' && qInput.trim() !== '';
+  const primeGenSizeValue = useMemo(
+    () => Number.parseInt(primeGenSize, 10),
+    [primeGenSize],
+  );
+  const primeGenMaxForType =
+    primeGenSizeType === 'bits' ? MAX_RSA_PRIME_BITS : MAX_RSA_PRIME_DIGITS;
 
   const checkRecoveredFactor = (factor: 'p' | 'q') => {
     if (!computedKeySnapshot) return;
@@ -528,6 +589,7 @@ const RSAEncryptor: React.FC = () => {
     recoverInputs !== null &&
     recoverInputs.n < MAX_RECOVERY_MODULUS &&
     !recoverWorking &&
+    !primeGenWorking &&
     !working;
   const canStopRecovery = recoverWorking && recoverLiveElapsedMs >= 1000;
 
@@ -760,6 +822,8 @@ const RSAEncryptor: React.FC = () => {
   };
 
   const clearKeyInputs = () => {
+    terminatePrimeGenWorkers();
+    setPrimeGenWorking(false);
     setPInput('');
     setQInput('');
     setEInput(DEFAULT_E);
@@ -772,31 +836,158 @@ const RSAEncryptor: React.FC = () => {
     setDecryptOutput('');
   };
 
+  const generatePrimes = () => {
+    setError(null);
+
+    if (!Number.isInteger(primeGenSizeValue) || primeGenSizeValue <= 0) {
+      setError('Prime size must be a positive integer.');
+      return;
+    }
+    if (primeGenSizeValue > primeGenMaxForType) {
+      setError(`Maximum size is ${primeGenMaxForType} ${primeGenSizeType}.`);
+      return;
+    }
+
+    terminatePrimeGenWorkers();
+    const workerCount = Math.max(
+      1,
+      Math.min(MAX_RSA_PRIME_GEN_THREADS, navigator.hardwareConcurrency ?? 2),
+    );
+    primeGenWorkersRef.current = Array.from({ length: workerCount }, () =>
+      createPrimeGeneratorWorker(),
+    );
+
+    setPrimeGenWorking(true);
+
+    primeGenRunIdRef.current += 1;
+    const runId = primeGenRunIdRef.current;
+    const found = new Set<string>();
+    let resolved = false;
+
+    const dispatchPrimeJob = (worker: Worker) => {
+      const nextJobId = ++primeGenJobIdRef.current;
+      primeGenWorkerJobIdRef.current.set(worker, nextJobId);
+      const request: PrimeGenerateRequest = {
+        type: 'generate',
+        jobId: nextJobId,
+        options: {
+          size: primeGenSizeValue,
+          sizeType: primeGenSizeType,
+          count: 1,
+        },
+      };
+      worker.postMessage(request);
+    };
+
+    const finishSuccess = () => {
+      const [p, q] = Array.from(found);
+      if (!p || !q) return;
+      setPInput(p);
+      setQInput(q);
+      setPrimeGenWorking(false);
+      terminatePrimeGenWorkers();
+    };
+
+    const finishError = (message: string) => {
+      if (resolved) return;
+      resolved = true;
+      primeGenRunIdRef.current += 1;
+      setPrimeGenWorking(false);
+      setError(message);
+      terminatePrimeGenWorkers();
+    };
+
+    for (const worker of primeGenWorkersRef.current) {
+      worker.onmessage = (event: MessageEvent<PrimeGenerateResponse>) => {
+        if (resolved || primeGenRunIdRef.current !== runId) return;
+        const msg = event.data;
+        const expectedJobId = primeGenWorkerJobIdRef.current.get(worker);
+        if (expectedJobId !== msg.jobId) return;
+
+        if (msg.type === 'error') {
+          finishError(msg.message);
+          return;
+        }
+
+        const prime = msg.primes[0];
+        if (prime) found.add(prime);
+        if (found.size >= 2) {
+          resolved = true;
+          primeGenRunIdRef.current += 1;
+          finishSuccess();
+          return;
+        }
+
+        dispatchPrimeJob(worker);
+      };
+
+      dispatchPrimeJob(worker);
+    }
+  };
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setMode('encrypt')}
-          className={
-            mode === 'encrypt'
-              ? primaryButtonClass
-              : `${secondaryButtonClass} disabled:opacity-100`
-          }
-        >
-          Encrypt Mode
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('decrypt')}
-          className={
-            mode === 'decrypt'
-              ? primaryButtonClass
-              : `${secondaryButtonClass} disabled:opacity-100`
-          }
-        >
-          Decrypt Mode
-        </button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('encrypt')}
+            className={
+              mode === 'encrypt'
+                ? primaryButtonClass
+                : `${secondaryButtonClass} disabled:opacity-100`
+            }
+          >
+            Encrypt Mode
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('decrypt')}
+            className={
+              mode === 'decrypt'
+                ? primaryButtonClass
+                : `${secondaryButtonClass} disabled:opacity-100`
+            }
+          >
+            Decrypt Mode
+          </button>
+        </div>
+        <div className="ml-auto flex items-center justify-end gap-2 whitespace-nowrap">
+          {primeGenWorking ? (
+            <span
+              aria-hidden="true"
+              className="block h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-gray-300"
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={generatePrimes}
+            disabled={working || recoverWorking || primeGenWorking}
+            className={primaryButtonClass}
+          >
+            {primeGenWorking ? 'Generating…' : 'Generate Primes'}
+          </button>
+          <input
+            value={primeGenSize}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (/^\d*$/.test(v)) setPrimeGenSize(v);
+            }}
+            className={`${inputClass} w-26!`}
+            inputMode="numeric"
+            placeholder={primeGenSizeType === 'bits' ? 'Max: 2048' : 'Max: 617'}
+          />
+          <select
+            value={primeGenSizeType}
+            onChange={(e) =>
+              setPrimeGenSizeType(e.target.value as PrimeSizeType)
+            }
+            className={`${inputClass} h-10.5 w-20!`}
+          >
+            <option value="bits">bits</option>
+            <option value="digits">digits</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -810,7 +1001,7 @@ const RSAEncryptor: React.FC = () => {
           onChange={setPInput}
           placeholder="Prime p"
           minRows={1}
-          rows={1}
+          rows={4}
         />
         <NumericInput
           label={
@@ -822,7 +1013,7 @@ const RSAEncryptor: React.FC = () => {
           onChange={setQInput}
           placeholder="Prime q"
           minRows={1}
-          rows={1}
+          rows={4}
         />
         <NumericInput
           label={
@@ -834,7 +1025,7 @@ const RSAEncryptor: React.FC = () => {
           onChange={setEInput}
           placeholder={DEFAULT_E}
           minRows={1}
-          rows={1}
+          rows={4}
         />
         <NumericInput
           label={
@@ -846,7 +1037,7 @@ const RSAEncryptor: React.FC = () => {
           onChange={setNInput}
           placeholder="Modulus n"
           minRows={1}
-          rows={1}
+          rows={4}
         />
       </div>
 
@@ -854,7 +1045,7 @@ const RSAEncryptor: React.FC = () => {
         <button
           type="button"
           onClick={computeKeyDetails}
-          disabled={!hasPAndQ || working || recoverWorking}
+          disabled={!hasPAndQ || working || recoverWorking || primeGenWorking}
           className={primaryButtonClass}
         >
           Compute
@@ -913,7 +1104,7 @@ const RSAEncryptor: React.FC = () => {
         <button
           type="button"
           onClick={clearKeyInputs}
-          disabled={working || recoverWorking}
+          disabled={working || recoverWorking || primeGenWorking}
           className={`${secondaryButtonClass} ml-auto disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           Clear keys
