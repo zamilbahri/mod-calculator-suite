@@ -23,6 +23,13 @@ export interface RsaPemExportResult {
   publicKeyPem: string;
 }
 
+export interface RsaPublicPemExportOptions {
+  n: bigint;
+  e: bigint;
+  algorithmName?: RsaPemAlgorithmName;
+  hashName?: RsaPemHashName;
+}
+
 const toBase64 = (bytes: Uint8Array): string => {
   if (typeof btoa === 'function') {
     let binary = '';
@@ -157,4 +164,33 @@ export const exportRsaKeyPairToPem = async ({
     privateKeyPem: wrapPem('PRIVATE KEY', exportedPrivateDer),
     publicKeyPem: wrapPem('PUBLIC KEY', exportedPublicDer),
   };
+};
+
+export const exportRsaPublicKeyToPem = async ({
+  n,
+  e,
+  algorithmName = 'RSA-OAEP',
+  hashName = 'SHA-256',
+}: RsaPublicPemExportOptions): Promise<string> => {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('Web Crypto API (crypto.subtle) is not available.');
+  }
+
+  const publicJwk = buildRsaPublicJwk(n, e);
+  const { publicUsages } = getKeyUsages(algorithmName);
+  const algorithm: RsaHashedImportParams = {
+    name: algorithmName,
+    hash: hashName,
+  };
+
+  const publicCryptoKey = await crypto.subtle.importKey(
+    'jwk',
+    publicJwk,
+    algorithm,
+    true,
+    publicUsages,
+  );
+
+  const exportedPublicDer = await crypto.subtle.exportKey('spki', publicCryptoKey);
+  return wrapPem('PUBLIC KEY', exportedPublicDer);
 };

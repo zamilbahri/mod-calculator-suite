@@ -29,6 +29,7 @@ import {
   DEFAULT_RSA_PUBLIC_EXPONENT,
   encryptRsaMessage,
   exportRsaKeyPairToPem,
+  exportRsaPublicKeyToPem,
   formatCiphertextBlocks,
   getDefaultBlockSize,
   integerSqrt,
@@ -99,6 +100,8 @@ const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
 const MAX_RSA_PRIME_BITS_PER_PRIME = 2048;
 const MAX_RSA_PRIME_GEN_THREADS = 2;
 const DEFAULT_RSA_PRIME_BITS_PER_PRIME = 512;
+const PRIVATE_PEM_UNAVAILABLE_MESSAGE =
+  'Private key PEM unavailable: provide prime factors p and q so d can be computed.';
 
 const createRsaDecryptWorker = (): Worker =>
   new Worker(new URL('../../../workers/rsaDecrypt.worker.ts', import.meta.url), {
@@ -354,182 +357,39 @@ const RSAEncryptorContainer: React.FC = () => {
     }
   };
 
-  const resolvePrimeGenerationOptionsForEncrypt = (): {
-    size: number;
-    sizeType: RsaPrimeSizeType;
-    usedDefault: boolean;
-  } => {
-    const parsedSize = Number.parseInt(primeGenSize, 10);
-    if (Number.isInteger(parsedSize) && parsedSize > 0) {
+  const resolveEncryptKeyMaterial = (): { e: bigint; n: bigint } => {
+    const e = parseBigIntStrict(eInput, 'e');
+    if (e <= 1n) {
+      throw new Error('e must be greater than 1.');
+    }
+
+    let n: bigint;
+    if (nInput.trim() !== '') {
+      n = parseBigIntStrict(nInput, 'n');
+    } else if (pInput.trim() !== '' && qInput.trim() !== '') {
+      const p = parseBigIntStrict(pInput, 'p');
+      const q = parseBigIntStrict(qInput, 'q');
       if (
-        primeGenSizeType === 'bits' &&
-        parsedSize <= MAX_RSA_PRIME_BITS_PER_PRIME
+        !primalityCheck(p).isProbablePrime ||
+        !primalityCheck(q).isProbablePrime
       ) {
-        return { size: parsedSize, sizeType: 'bits', usedDefault: false };
+        throw new Error('p and q must be prime to derive n.');
       }
-      if (
-        primeGenSizeType === 'digits' &&
-        parsedSize <= MAX_GENERATED_PRIME_DIGITS
-      ) {
-        return { size: parsedSize, sizeType: 'digits', usedDefault: false };
+      if (p === q) {
+        throw new Error('p and q must be distinct primes.');
       }
-    }
-
-    return {
-      size: DEFAULT_RSA_PRIME_BITS_PER_PRIME,
-      sizeType: 'bits',
-      usedDefault: true,
-    };
-  };
-
-  const generateSinglePrimeForEncrypt = (
-    size: number,
-    sizeType: RsaPrimeSizeType,
-  ): Promise<bigint> =>
-    new Promise((resolve, reject) => {
-      const worker = createPrimeGeneratorWorker();
-      const jobId = ++primeGenJobIdRef.current;
-      const cleanup = () => worker.terminate();
-
-      worker.onmessage = (event: MessageEvent<PrimeGenerateResponse>) => {
-        const msg = event.data;
-        if (msg.jobId !== jobId) return;
-
-        if (msg.type === 'error') {
-          cleanup();
-          reject(new Error(msg.message));
-          return;
-        }
-
-        if (msg.type !== 'completed') return;
-
-        cleanup();
-        const generated = msg.primes[0];
-        if (!generated) {
-          reject(new Error('Prime generation worker returned no prime.'));
-          return;
-        }
-
-        try {
-          resolve(parseBigIntStrict(generated, 'generated prime'));
-        } catch (cause) {
-          reject(
-            cause instanceof Error
-              ? cause
-              : new Error('Generated prime was invalid.'),
-          );
-        }
-      };
-
-      worker.onerror = () => {
-        cleanup();
-        reject(new Error('Prime generation worker failed.'));
-      };
-
-      const request: PrimeGenerateRequest = {
-        type: 'generate',
-        jobId,
-        options: {
-          size,
-          sizeType,
-          count: 1,
-        },
-      };
-      worker.postMessage(request);
-    });
-
-  const generateDistinctPrimeForEncrypt = async (
-    options: { size: number; sizeType: RsaPrimeSizeType },
-    disallow: Set<bigint>,
-  ): Promise<bigint> => {
-    while (true) {
-      const candidate = await generateSinglePrimeForEncrypt(
-        options.size,
-        options.sizeType,
-      );
-      if (!disallow.has(candidate)) return candidate;
-    }
-  };
-
-  const resolveEncryptKeyMaterial = async (): Promise<{ e: bigint; n: bigint }> => {
-    let p: bigint | null = null;
-    let q: bigint | null = null;
-
-    if (pInput.trim() !== '') {
-      p = parseBigIntStrict(pInput, 'p');
-      if (!primalityCheck(p).isProbablePrime) {
-        throw new Error('p must be prime.');
-      }
-    }
-    if (qInput.trim() !== '') {
-      q = parseBigIntStrict(qInput, 'q');
-      if (!primalityCheck(q).isProbablePrime) {
-        throw new Error('q must be prime.');
-      }
-    }
-
-    if (p !== null && q !== null && p === q) {
-      throw new Error('p and q must be distinct primes.');
-    }
-
-    if (p === null || q === null) {
-      const options = resolvePrimeGenerationOptionsForEncrypt();
-      if (options.usedDefault) {
-        setPrimeGenSize(DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString());
-        setPrimeGenSizeType('bits');
-      }
-
-      const disallow = new Set<bigint>();
-      if (p !== null) disallow.add(p);
-      if (q !== null) disallow.add(q);
-
-      if (p === null) {
-        p = await generateDistinctPrimeForEncrypt(options, disallow);
-        disallow.add(p);
-      }
-      if (q === null) {
-        q = await generateDistinctPrimeForEncrypt(options, disallow);
-      }
-
-      setPInput(p.toString());
-      setQInput(q.toString());
-    }
-
-    const n = computeModulus(p, q);
-    const phi = computePhi(p, q);
-
-    let e: bigint;
-    if (eInput.trim() === '') {
-      const selectedE = selectDefaultPublicExponent(phi);
-      if (!selectedE) {
-        throw new Error('Could not derive e for encryption.');
-      }
-      e = selectedE;
-      setEInput(e.toString());
+      n = computeModulus(p, q);
+      setNInput(n.toString());
     } else {
-      e = parseBigIntStrict(eInput, 'e');
-      if (!isValidPublicExponentForPhi(e, phi)) {
-        throw new Error('e must be coprime to \u03D5 and e < \u03D5.');
-      }
+      throw new Error('Provide modulus n (or both p and q) to encrypt.');
     }
 
-    const d = computePrivateExponent(e, phi).toString();
-    setNInput(n.toString());
-    setDValue(d);
-    setComputedKeySnapshot({
-      p: p.toString(),
-      q: q.toString(),
-      n: n.toString(),
-      phi: phi.toString(),
-      d,
-    });
-    setShowRecoveredFactors(false);
-    setPrimeFactorsFound(false);
-    setRecoverElapsedMs(null);
-    setRecoverAttemptCounts({ balanced: 0, low: 0 });
-    setPFactorCheck(null);
-    setQFactorCheck(null);
-    clearPemOutputs();
+    if (n <= 1n) {
+      throw new Error('n must be greater than 1.');
+    }
+    if (e >= n) {
+      throw new Error('e must be smaller than n.');
+    }
 
     return { e, n };
   };
@@ -554,7 +414,7 @@ const RSAEncryptorContainer: React.FC = () => {
         throw new Error('Text to encrypt must contain ASCII characters only.');
       }
 
-      const { e, n } = await resolveEncryptKeyMaterial();
+      const { e, n } = resolveEncryptKeyMaterial();
       const encoding = buildEncoding();
       const blockSize = resolveRsaBlockSize({
         blockSizeInput,
@@ -936,77 +796,61 @@ const RSAEncryptorContainer: React.FC = () => {
   const generateKeyPairPem = async () => {
     setPemError(null);
     setPemWorking(true);
+    setPublicKeyPem('');
+    setPrivateKeyPem('');
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      let p: bigint | null = null;
-      let q: bigint | null = null;
-
-      if (pInput.trim() !== '') {
-        p = parseBigIntStrict(pInput, 'p');
-        if (!primalityCheck(p).isProbablePrime) {
-          throw new Error('p must be prime to export a valid RSA key.');
-        }
-      }
-      if (qInput.trim() !== '') {
-        q = parseBigIntStrict(qInput, 'q');
-        if (!primalityCheck(q).isProbablePrime) {
-          throw new Error('q must be prime to export a valid RSA key.');
-        }
+      const e = parseBigIntStrict(eInput, 'e');
+      let n: bigint;
+      if (nInput.trim() !== '') {
+        n = parseBigIntStrict(nInput, 'n');
+      } else if (pInput.trim() !== '' && qInput.trim() !== '') {
+        n = computeModulus(parseBigIntStrict(pInput, 'p'), parseBigIntStrict(qInput, 'q'));
+        setNInput(n.toString());
+      } else {
+        throw new Error('Provide modulus n (or both p and q) to export PEM keys.');
       }
 
-      if (p !== null && q !== null && p === q) {
+      if (n <= 1n) {
+        throw new Error('n must be greater than 1.');
+      }
+      if (e <= 1n || e >= n) {
+        throw new Error('e must satisfy 1 < e < n for PEM export.');
+      }
+
+      const publicPem = await exportRsaPublicKeyToPem({ n, e });
+      setPublicKeyPem(publicPem);
+
+      if (pInput.trim() === '' || qInput.trim() === '') {
+        setPrivateKeyPem(PRIVATE_PEM_UNAVAILABLE_MESSAGE);
+        return;
+      }
+
+      const p = parseBigIntStrict(pInput, 'p');
+      const q = parseBigIntStrict(qInput, 'q');
+      if (
+        !primalityCheck(p).isProbablePrime ||
+        !primalityCheck(q).isProbablePrime
+      ) {
+        throw new Error('p and q must be prime to export a valid private key.');
+      }
+      if (p === q) {
         throw new Error('p and q must be distinct primes.');
       }
 
-      if (p === null || q === null) {
-        const options = resolvePrimeGenerationOptionsForEncrypt();
-        if (options.usedDefault) {
-          setPrimeGenSize(DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString());
-          setPrimeGenSizeType('bits');
-        }
-
-        const disallow = new Set<bigint>();
-        if (p !== null) disallow.add(p);
-        if (q !== null) disallow.add(q);
-
-        if (p === null) {
-          p = await generateDistinctPrimeForEncrypt(options, disallow);
-          disallow.add(p);
-        }
-        if (q === null) {
-          q = await generateDistinctPrimeForEncrypt(options, disallow);
-        }
-
-        setPInput(p.toString());
-        setQInput(q.toString());
+      const derivedN = computeModulus(p, q);
+      if (derivedN !== n) {
+        throw new Error('Provided p and q do not match modulus n.');
       }
 
-      if (p === null || q === null) {
-        throw new Error('Failed to derive p and q for PEM export.');
-      }
-
-      const n = computeModulus(p, q);
       const phi = computePhi(p, q);
-      const lambda = computeLambdaN(p, q);
-
-      let e: bigint;
-      if (eInput.trim() === '') {
-        const selected = selectDefaultPublicExponent(phi);
-        if (!selected) {
-          throw new Error('Could not derive e for PEM export.');
-        }
-        e = selected;
-        setEInput(e.toString());
-      } else {
-        e = parseBigIntStrict(eInput, 'e');
-      }
-
       if (!isValidPublicExponentForPhi(e, phi)) {
         throw new Error('e must be coprime to \u03D5 and e < \u03D5.');
       }
 
+      const lambda = computeLambdaN(p, q);
       let d: bigint;
       if (dValue.trim() !== '' && /^\d+$/.test(dValue.trim())) {
         d = parseBigIntStrict(dValue, 'd');
@@ -1019,8 +863,7 @@ const RSAEncryptorContainer: React.FC = () => {
       }
 
       const exported = await exportRsaKeyPairToPem({ p, q, e, d, n });
-
-      setNInput(n.toString());
+      setPrivateKeyPem(exported.privateKeyPem);
       setComputedKeySnapshot({
         p: p.toString(),
         q: q.toString(),
@@ -1029,8 +872,6 @@ const RSAEncryptorContainer: React.FC = () => {
         d: d.toString(),
       });
       setShowRecoveredFactors(false);
-      setPublicKeyPem(exported.publicKeyPem);
-      setPrivateKeyPem(exported.privateKeyPem);
     } catch (cause) {
       setPemError(
         cause instanceof Error ? cause.message : 'Failed to generate PEM keys.',

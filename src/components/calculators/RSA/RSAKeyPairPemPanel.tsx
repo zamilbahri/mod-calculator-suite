@@ -46,10 +46,9 @@ const RSAKeyPairPemPanel = ({
           Clear PEM
         </button>
         <p className="text-xs italic text-gray-400">
-          Uses current key values ({' '}
-          <code className="font-mono text-gray-300">p, q, e, d</code>) and
-          auto-generates missing p/q before exporting PKCS#8 private + SPKI
-          public PEM.
+          Uses current key values (
+          <code className="font-mono text-gray-300">e, n</code>) to export public
+          PEM. Private PEM requires valid <code className="font-mono text-gray-300">p, q</code>.
         </p>
       </div>
 

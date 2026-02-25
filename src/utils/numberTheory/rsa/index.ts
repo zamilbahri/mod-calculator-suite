@@ -37,8 +37,10 @@ export {
   bigIntToBase64UrlUInt,
   buildRsaPublicJwk,
   buildRsaPrivateJwk,
+  exportRsaPublicKeyToPem,
   exportRsaKeyPairToPem,
   type RsaPrivateKeyComponents,
+  type RsaPublicPemExportOptions,
   type RsaPemExportOptions,
   type RsaPemExportResult,
 } from './pem';
