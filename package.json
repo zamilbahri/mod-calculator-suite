@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "npm run build && npx --yes gh-pages -d dist -b gh-pages -r https://github.com/zamilbahri/mod-calculator-suite.git",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --import tsx --test src/**/*.test.ts",
