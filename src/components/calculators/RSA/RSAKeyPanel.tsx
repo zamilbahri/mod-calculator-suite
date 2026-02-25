@@ -12,6 +12,7 @@ import {
   errorBoxClass,
   primaryButtonClass,
   secondaryButtonClass,
+  tertiaryButtonClass,
 } from '../../shared/ui';
 
 type RecoverAttemptCounts = {
@@ -371,7 +372,7 @@ const RSAKeyPanel = ({
                 <button
                   type="button"
                   onClick={() => setShowLambda((value) => !value)}
-                  className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600"
+                  className={tertiaryButtonClass}
                   title="Switch between phi(n) and lambda(n)"
                 >
                   {useLambda ? (

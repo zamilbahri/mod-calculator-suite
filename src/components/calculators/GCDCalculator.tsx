@@ -5,6 +5,7 @@ import {
   errorBoxClass,
   primaryButtonClass,
   secondaryButtonClass,
+  tertiaryButtonClass,
 } from '../shared/ui';
 import {
   extendedGCD,
@@ -185,7 +186,7 @@ const GCDCalculator: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSwapInv((v) => !v)}
-                className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600"
+                className={tertiaryButtonClass}
                 title="Swap which value is inverted and which is the modulus"
               >
                 {swapInv ? (
