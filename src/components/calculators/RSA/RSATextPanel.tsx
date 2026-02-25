@@ -1,7 +1,6 @@
 import type { RsaCiphertextFormat, RsaMode } from '../../../types';
 import NumericOutput from '../../shared/NumericOutput';
 import {
-  dangerButtonClass,
   errorBoxClass,
   inputClass,
   primaryButtonClass,
@@ -125,7 +124,7 @@ const RSATextPanel = ({
           type="button"
           onClick={onClearAll}
           disabled={disableClearAll}
-          className={dangerButtonClass}
+          className={`${secondaryButtonClass} border-red-500/70`}
         >
           Clear all
         </button>
