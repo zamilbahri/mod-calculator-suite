@@ -104,7 +104,7 @@ const PrimeChecker: React.FC = () => {
   const reasonText = (() => {
     if (!result) return null;
     if (result.method === 'Small Prime Check' && result.verdict === 'Prime') {
-      return 'Found in list of first 100 primes';
+      return 'Found in list of primes less than 1000';
     }
     if (
       result.method === 'Small Prime Check' &&
