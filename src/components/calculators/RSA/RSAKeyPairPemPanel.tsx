@@ -24,6 +24,8 @@ const RSAKeyPairPemPanel = ({
   publicKeyPem,
   privateKeyPem,
 }: Props) => {
+  const hasBothPem = publicKeyPem !== '' && privateKeyPem !== '';
+
   return (
     <div className="mt-6 space-y-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -46,25 +48,36 @@ const RSAKeyPairPemPanel = ({
         <p className="text-xs italic text-gray-400">
           Uses current key values ({' '}
           <code className="font-mono text-gray-300">p, q, e, d</code>) and
-          exports PKCS#8 private + SPKI public PEM.
+          auto-generates missing p/q before exporting PKCS#8 private + SPKI
+          public PEM.
         </p>
       </div>
 
       {error ? <div className={errorBoxClass}>{error}</div> : null}
 
-      {publicKeyPem ? (
-        <NumericOutput
-          label={<span>Public Key (SPKI PEM)</span>}
-          value={publicKeyPem}
-        />
-      ) : null}
+      <div
+        className={
+          hasBothPem
+            ? 'grid grid-cols-1 gap-4 xl:grid-cols-2'
+            : 'grid grid-cols-1 gap-4'
+        }
+      >
+        {publicKeyPem ? (
+          <NumericOutput
+            className="min-w-0"
+            label={<span>Public Key (SPKI PEM)</span>}
+            value={publicKeyPem}
+          />
+        ) : null}
 
-      {privateKeyPem ? (
-        <NumericOutput
-          label={<span>Private Key (PKCS#8 PEM)</span>}
-          value={privateKeyPem}
-        />
-      ) : null}
+        {privateKeyPem ? (
+          <NumericOutput
+            className="min-w-0"
+            label={<span>Private Key (PKCS#8 PEM)</span>}
+            value={privateKeyPem}
+          />
+        ) : null}
+      </div>
     </div>
   );
 };

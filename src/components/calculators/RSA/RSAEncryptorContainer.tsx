@@ -940,13 +940,51 @@ const RSAEncryptorContainer: React.FC = () => {
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      const p = parseBigIntStrict(pInput, 'p');
-      const q = parseBigIntStrict(qInput, 'q');
-      if (
-        !primalityCheck(p).isProbablePrime ||
-        !primalityCheck(q).isProbablePrime
-      ) {
-        throw new Error('p and q must be prime to export a valid RSA key.');
+      let p: bigint | null = null;
+      let q: bigint | null = null;
+
+      if (pInput.trim() !== '') {
+        p = parseBigIntStrict(pInput, 'p');
+        if (!primalityCheck(p).isProbablePrime) {
+          throw new Error('p must be prime to export a valid RSA key.');
+        }
+      }
+      if (qInput.trim() !== '') {
+        q = parseBigIntStrict(qInput, 'q');
+        if (!primalityCheck(q).isProbablePrime) {
+          throw new Error('q must be prime to export a valid RSA key.');
+        }
+      }
+
+      if (p !== null && q !== null && p === q) {
+        throw new Error('p and q must be distinct primes.');
+      }
+
+      if (p === null || q === null) {
+        const options = resolvePrimeGenerationOptionsForEncrypt();
+        if (options.usedDefault) {
+          setPrimeGenSize(DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString());
+          setPrimeGenSizeType('bits');
+        }
+
+        const disallow = new Set<bigint>();
+        if (p !== null) disallow.add(p);
+        if (q !== null) disallow.add(q);
+
+        if (p === null) {
+          p = await generateDistinctPrimeForEncrypt(options, disallow);
+          disallow.add(p);
+        }
+        if (q === null) {
+          q = await generateDistinctPrimeForEncrypt(options, disallow);
+        }
+
+        setPInput(p.toString());
+        setQInput(q.toString());
+      }
+
+      if (p === null || q === null) {
+        throw new Error('Failed to derive p and q for PEM export.');
       }
 
       const n = computeModulus(p, q);
@@ -1172,12 +1210,7 @@ const RSAEncryptorContainer: React.FC = () => {
         onClear={clearPemOutputs}
         working={pemWorking}
         disabled={
-          working ||
-          recoverWorking ||
-          computeWorking ||
-          primeGenWorking ||
-          pInput.trim() === '' ||
-          qInput.trim() === ''
+          working || recoverWorking || computeWorking || primeGenWorking
         }
         error={pemError}
         publicKeyPem={publicKeyPem}
