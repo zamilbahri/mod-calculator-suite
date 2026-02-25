@@ -26,10 +26,22 @@ export {
   resolveRsaBlockSize,
   encryptRsaMessage,
   decryptRsaMessage,
+  formatCiphertextBlocks,
+  parseCiphertextInputToDecimal,
   type ResolveRsaBlockSizeOptions,
   type EncryptRsaMessageOptions,
   type DecryptRsaMessageOptions,
 } from './crypto';
+
+export {
+  bigIntToBase64UrlUInt,
+  buildRsaPublicJwk,
+  buildRsaPrivateJwk,
+  exportRsaKeyPairToPem,
+  type RsaPrivateKeyComponents,
+  type RsaPemExportOptions,
+  type RsaPemExportResult,
+} from './pem';
 
 export {
   RSA_WHEEL_PRECHECK_PRIMES,

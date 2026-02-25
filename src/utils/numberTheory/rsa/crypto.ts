@@ -1,4 +1,4 @@
-import type { RsaEncodingMode } from '../../../types';
+import type { RsaCiphertextFormat, RsaEncodingMode } from '../../../types';
 import { modPow } from '../core';
 import { parseBigIntStrict } from '../validation';
 import {
@@ -32,6 +32,83 @@ export interface DecryptRsaMessageOptions {
   blockSize: number;
   encoding: AlphabetEncoding;
 }
+
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+
+  throw new Error('Base64 conversion is not available in this environment.');
+};
+
+const base64ToBytes = (value: string): Uint8Array => {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const remainder = normalized.length % 4;
+  const padded =
+    remainder === 0 ? normalized : `${normalized}${'='.repeat(4 - remainder)}`;
+
+  if (typeof atob === 'function') {
+    const binary = atob(padded);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      out[i] = binary.charCodeAt(i);
+    }
+    return out;
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    const buffer = Buffer.from(padded, 'base64');
+    return new Uint8Array(buffer);
+  }
+
+  throw new Error('Base64 conversion is not available in this environment.');
+};
+
+export const formatCiphertextBlocks = (
+  blocks: readonly string[],
+  format: RsaCiphertextFormat,
+): string => {
+  if (format === 'decimal') return blocks.join(' ');
+
+  const encodedBlocks = blocks.map((block, index) => {
+    const value = parseBigIntStrict(block, `ciphertext block ${index + 1}`);
+    return bytesToBase64(bigIntToBytes(value));
+  });
+  return encodedBlocks.join(' ');
+};
+
+export const parseCiphertextInputToDecimal = (
+  ciphertext: string,
+  format: RsaCiphertextFormat,
+): string => {
+  if (format === 'decimal') return ciphertext;
+
+  const trimmed = ciphertext.trim();
+  if (trimmed === '') return '';
+
+  const tokens = trimmed.split(/\s+/);
+  const decimalBlocks = tokens.map((token, index) => {
+    try {
+      const bytes = base64ToBytes(token);
+      if (bytes.length === 0) {
+        throw new Error('Empty Base64 ciphertext block.');
+      }
+      return bytesToBigInt(bytes).toString();
+    } catch (cause) {
+      const message =
+        cause instanceof Error ? cause.message : 'Invalid Base64 token.';
+      throw new Error(`Invalid Base64 ciphertext block ${index + 1}: ${message}`);
+    }
+  });
+
+  return decimalBlocks.join(' ');
+};
 
 export const resolveRsaBlockSize = ({
   blockSizeInput,

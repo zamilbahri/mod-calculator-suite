@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import type {
+  RsaCiphertextFormat,
   RsaComputedKeySnapshot,
   RsaDecryptCompletedMessage,
   RsaDecryptRecoverRequest,
@@ -20,6 +21,7 @@ import {
   MAX_GENERATED_PRIME_DIGITS,
   buildAlphabetEncoding,
   buildRsaRecoveryRanges,
+  computeLambdaN,
   computeModulus,
   computePhi,
   computePrivateExponent,
@@ -27,6 +29,8 @@ import {
   DEFAULT_CUSTOM_ALPHABET,
   DEFAULT_RSA_PUBLIC_EXPONENT,
   encryptRsaMessage,
+  exportRsaKeyPairToPem,
+  formatCiphertextBlocks,
   getDefaultBlockSize,
   integerSqrt,
   INVALID_RSA_EXPONENT_HINT,
@@ -34,6 +38,7 @@ import {
   isValidPublicExponentForPhi,
   parseBigIntStrict,
   primalityCheck,
+  parseCiphertextInputToDecimal,
   resolveRsaBlockSize,
   runRsaRecoveryPrechecks,
   selectDefaultPublicExponent,
@@ -42,6 +47,7 @@ import type { RsaAlphabetMode } from '../../../types';
 import RSAEncodingPanel from './RSAEncodingPanel';
 import RSAHeaderControls from './RSAHeaderControls';
 import RSAKeyPanel from './RSAKeyPanel';
+import RSAKeyPairPemPanel from './RSAKeyPairPemPanel';
 import RSATextPanel from './RSATextPanel';
 
 type PrimeGenerateRequest = {
@@ -101,6 +107,8 @@ const RSAEncryptorContainer: React.FC = () => {
   const [mode, setMode] = useState<RsaMode>('encrypt');
   const [encodingMode, setEncodingMode] =
     useState<RsaEncodingMode>('fixed-width-numeric');
+  const [ciphertextFormat, setCiphertextFormat] =
+    useState<RsaCiphertextFormat>('decimal');
   const [pInput, setPInput] = useState('');
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_RSA_PUBLIC_EXPONENT);
@@ -139,6 +147,10 @@ const RSAEncryptorContainer: React.FC = () => {
   const [qFactorCheck, setQFactorCheck] = useState<RsaFactorCheckVerdict | null>(
     null,
   );
+  const [pemWorking, setPemWorking] = useState(false);
+  const [pemError, setPemError] = useState<string | null>(null);
+  const [publicKeyPem, setPublicKeyPem] = useState('');
+  const [privateKeyPem, setPrivateKeyPem] = useState('');
 
   const recoverWorkersRef = useRef<Worker[]>([]);
   const recoverJobIdRef = useRef(0);
@@ -344,7 +356,7 @@ const RSAEncryptorContainer: React.FC = () => {
         encoding,
       });
 
-      setEncryptOutput(blocks.join(' '));
+      setEncryptOutput(formatCiphertextBlocks(blocks, ciphertextFormat));
       setDecryptOutput('');
     } catch (cause) {
       setIoError(cause instanceof Error ? cause.message : 'Encryption failed.');
@@ -420,8 +432,12 @@ const RSAEncryptorContainer: React.FC = () => {
         encodingMode,
         defaultBlockSize,
       });
+      const normalizedCiphertext = parseCiphertextInputToDecimal(
+        messageInput,
+        ciphertextFormat,
+      );
       const text = decryptRsaMessage({
-        ciphertext: messageInput,
+        ciphertext: normalizedCiphertext,
         d,
         n,
         encodingMode,
@@ -627,6 +643,7 @@ const RSAEncryptorContainer: React.FC = () => {
     setDValue('');
     setComputedKeySnapshot(null);
     setShowRecoveredFactors(false);
+    clearPemOutputs();
   };
 
   const clearTextBlocks = () => {
@@ -634,6 +651,87 @@ const RSAEncryptorContainer: React.FC = () => {
     setEncryptOutput('');
     setDecryptOutput('');
     setIoError(null);
+  };
+
+  const handleCiphertextFormatChange = (nextFormat: RsaCiphertextFormat) => {
+    setCiphertextFormat(nextFormat);
+    setEncryptOutput('');
+    setIoError(null);
+  };
+
+  const clearPemOutputs = () => {
+    setPemError(null);
+    setPublicKeyPem('');
+    setPrivateKeyPem('');
+  };
+
+  const generateKeyPairPem = async () => {
+    setPemError(null);
+    setPemWorking(true);
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const p = parseBigIntStrict(pInput, 'p');
+      const q = parseBigIntStrict(qInput, 'q');
+      if (
+        !primalityCheck(p).isProbablePrime ||
+        !primalityCheck(q).isProbablePrime
+      ) {
+        throw new Error('p and q must be prime to export a valid RSA key.');
+      }
+
+      const n = computeModulus(p, q);
+      const phi = computePhi(p, q);
+      const lambda = computeLambdaN(p, q);
+
+      let e: bigint;
+      if (eInput.trim() === '') {
+        const selected = selectDefaultPublicExponent(phi);
+        if (!selected) {
+          throw new Error('Could not derive e for PEM export.');
+        }
+        e = selected;
+        setEInput(e.toString());
+      } else {
+        e = parseBigIntStrict(eInput, 'e');
+      }
+
+      if (!isValidPublicExponentForPhi(e, phi)) {
+        throw new Error('e must be coprime to \u03D5 and e < \u03D5.');
+      }
+
+      let d: bigint;
+      if (dValue.trim() !== '' && /^\d+$/.test(dValue.trim())) {
+        d = parseBigIntStrict(dValue, 'd');
+        if ((d * e) % lambda !== 1n) {
+          throw new Error('Provided d is not valid for the current p, q, and e.');
+        }
+      } else {
+        d = computePrivateExponent(e, lambda);
+        setDValue(d.toString());
+      }
+
+      const exported = await exportRsaKeyPairToPem({ p, q, e, d, n });
+
+      setNInput(n.toString());
+      setComputedKeySnapshot({
+        p: p.toString(),
+        q: q.toString(),
+        n: n.toString(),
+        phi: phi.toString(),
+        d: d.toString(),
+      });
+      setShowRecoveredFactors(false);
+      setPublicKeyPem(exported.publicKeyPem);
+      setPrivateKeyPem(exported.privateKeyPem);
+    } catch (cause) {
+      setPemError(
+        cause instanceof Error ? cause.message : 'Failed to generate PEM keys.',
+      );
+    } finally {
+      setPemWorking(false);
+    }
   };
 
   const generatePrimes = () => {
@@ -652,6 +750,7 @@ const RSAEncryptorContainer: React.FC = () => {
     setDValue('');
     setComputedKeySnapshot(null);
     setShowRecoveredFactors(false);
+    clearPemOutputs();
 
     terminatePrimeGenWorkers();
     const workerCount = Math.max(
@@ -794,6 +893,23 @@ const RSAEncryptorContainer: React.FC = () => {
         onCheckRecoveredFactor={checkRecoveredFactor}
       />
 
+      <RSAKeyPairPemPanel
+        onGenerate={generateKeyPairPem}
+        onClear={clearPemOutputs}
+        working={pemWorking}
+        disabled={
+          working ||
+          recoverWorking ||
+          computeWorking ||
+          primeGenWorking ||
+          pInput.trim() === '' ||
+          qInput.trim() === ''
+        }
+        error={pemError}
+        publicKeyPem={publicKeyPem}
+        privateKeyPem={privateKeyPem}
+      />
+
       <RSAEncodingPanel
         alphabetMode={alphabetMode}
         onAlphabetModeChange={setAlphabetMode}
@@ -812,6 +928,8 @@ const RSAEncryptorContainer: React.FC = () => {
 
       <RSATextPanel
         mode={mode}
+        ciphertextFormat={ciphertextFormat}
+        onCiphertextFormatChange={handleCiphertextFormatChange}
         messageInput={messageInput}
         onMessageInputChange={setMessageInput}
         onEncrypt={encrypt}

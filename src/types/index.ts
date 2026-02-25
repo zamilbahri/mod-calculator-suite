@@ -60,6 +60,7 @@ export type {
   RsaRecoverWorkerId,
   RsaPrimeSizeType,
   RsaFactorCheckVerdict,
+  RsaCiphertextFormat,
   RsaComputedKeySnapshot,
   RsaDecryptRecoverRequest,
   RsaDecryptCompletedMessage,

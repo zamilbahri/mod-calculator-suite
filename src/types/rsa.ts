@@ -10,6 +10,8 @@ export type RsaPrimeSizeType = 'bits' | 'digits';
 
 export type RsaFactorCheckVerdict = 'Prime' | 'Probably Prime' | 'Composite';
 
+export type RsaCiphertextFormat = 'decimal' | 'base64';
+
 export interface RsaComputedKeySnapshot {
   p: string;
   q: string;

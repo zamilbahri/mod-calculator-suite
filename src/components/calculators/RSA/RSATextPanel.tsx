@@ -1,4 +1,4 @@
-import type { RsaMode } from '../../../types';
+import type { RsaCiphertextFormat, RsaMode } from '../../../types';
 import NumericOutput from '../../shared/NumericOutput';
 import {
   errorBoxClass,
@@ -9,6 +9,8 @@ import {
 
 type Props = {
   mode: RsaMode;
+  ciphertextFormat: RsaCiphertextFormat;
+  onCiphertextFormatChange: (value: RsaCiphertextFormat) => void;
   messageInput: string;
   onMessageInputChange: (value: string) => void;
   onEncrypt: () => void;
@@ -23,6 +25,8 @@ type Props = {
 
 const RSATextPanel = ({
   mode,
+  ciphertextFormat,
+  onCiphertextFormatChange,
   messageInput,
   onMessageInputChange,
   onEncrypt,
@@ -36,18 +40,44 @@ const RSATextPanel = ({
 }: Props) => {
   return (
     <>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="flex min-w-44 flex-col gap-1">
+          <span className="text-sm text-purple-300">Ciphertext format</span>
+          <select
+            value={ciphertextFormat}
+            onChange={(event) =>
+              onCiphertextFormatChange(
+                event.target.value as RsaCiphertextFormat,
+              )
+            }
+            className={`${inputClass} h-10.5`}
+          >
+            <option value="decimal">Decimal blocks</option>
+            <option value="base64">Base64 blocks</option>
+          </select>
+        </label>
+      </div>
+
       <label className="mt-4 flex flex-col gap-1">
         <span className="text-sm text-purple-300">
           {mode === 'encrypt'
             ? 'Text to encrypt (ASCII only)'
-            : 'Encrypted text blocks (space-separated integers)'}
+            : `Encrypted text blocks (space-separated ${
+                ciphertextFormat === 'decimal'
+                  ? 'integers'
+                  : 'Base64 tokens'
+              })`}
         </span>
         <textarea
           value={messageInput}
           onChange={(event) => onMessageInputChange(event.target.value)}
           className={`${inputClass} min-h-28 resize-y`}
           placeholder={
-            mode === 'encrypt' ? 'Enter plaintext' : 'Enter ciphertext blocks'
+            mode === 'encrypt'
+              ? 'Enter plaintext'
+              : ciphertextFormat === 'decimal'
+                ? 'Enter ciphertext blocks (decimal)'
+                : 'Enter ciphertext blocks (Base64)'
           }
           spellCheck={false}
         />
@@ -88,7 +118,12 @@ const RSATextPanel = ({
       {mode === 'encrypt' && encryptOutput ? (
         <div className="mt-6">
           <NumericOutput
-            label={<span>Encrypted Text (space-separated numeric blocks)</span>}
+            label={
+              <span>
+                Encrypted Text (space-separated{' '}
+                {ciphertextFormat === 'decimal' ? 'decimal' : 'Base64'} blocks)
+              </span>
+            }
             value={encryptOutput}
           />
         </div>
