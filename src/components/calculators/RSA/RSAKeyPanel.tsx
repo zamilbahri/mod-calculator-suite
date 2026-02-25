@@ -1,8 +1,10 @@
+import { useMemo, useState } from 'react';
 import type {
   RsaComputedKeySnapshot,
   RsaFactorCheckVerdict,
   RsaMode,
 } from '../../../types';
+import { computeLambdaN } from '../../../utils/numberTheory';
 import MathText from '../../shared/MathText';
 import NumericInput from '../../shared/NumericInput';
 import NumericOutput from '../../shared/NumericOutput';
@@ -86,6 +88,23 @@ const RSAKeyPanel = ({
   qFactorCheck,
   onCheckRecoveredFactor,
 }: Props) => {
+  const [showLambda, setShowLambda] = useState(false);
+
+  const lambdaValue = useMemo(() => {
+    if (!computedKeySnapshot) return null;
+    try {
+      return computeLambdaN(
+        BigInt(computedKeySnapshot.p),
+        BigInt(computedKeySnapshot.q),
+      ).toString();
+    } catch {
+      return null;
+    }
+  }, [computedKeySnapshot]);
+
+  const useLambda = showLambda && lambdaValue !== null;
+  const showRecoveredFactorOutputs = mode === 'decrypt' && showRecoveredFactors;
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
@@ -245,7 +264,8 @@ const RSAKeyPanel = ({
         ) : computeWorking ? (
           <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
             <span className="h-2 w-2 animate-pulse rounded-full bg-gray-300" />
-            Computing <MathText className="inline">{`n,\\varphi(n),d`}</MathText>
+            Computing{' '}
+            <MathText className="inline">{`n,\\varphi(n),d`}</MathText>
           </p>
         ) : null}
         <button
@@ -271,8 +291,8 @@ const RSAKeyPanel = ({
 
       {computedKeySnapshot ? (
         <div className="mt-4 space-y-3">
-          <div className="grid gap-4 md:grid-cols-2">
-            {mode === 'decrypt' && showRecoveredFactors ? (
+          {showRecoveredFactorOutputs ? (
+            <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
                 <NumericOutput
                   label={
@@ -306,8 +326,6 @@ const RSAKeyPanel = ({
                   ) : null}
                 </div>
               </div>
-            ) : null}
-            {mode === 'decrypt' && showRecoveredFactors ? (
               <div className="space-y-1">
                 <NumericOutput
                   label={
@@ -341,17 +359,66 @@ const RSAKeyPanel = ({
                   ) : null}
                 </div>
               </div>
-            ) : null}
-            <NumericOutput
-              label={<MathText>{`\\varphi(n)`}</MathText>}
-              value={computedKeySnapshot.phi}
-            />
-            {computedKeySnapshot.d !== '' ? (
+            </div>
+          ) : null}
+
+          <div className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-purple-200">
+                Derived Key Parameters
+              </div>
+              {lambdaValue ? (
+                <button
+                  type="button"
+                  onClick={() => setShowLambda((value) => !value)}
+                  className="text-xs px-3 py-1 rounded-md bg-gray-700 border border-gray-600 hover:bg-gray-600"
+                  title="Switch between phi(n) and lambda(n)"
+                >
+                  {useLambda ? (
+                    <span>
+                      Show <MathText>{`\\varphi(n)`}</MathText> instead
+                    </span>
+                  ) : (
+                    <span>
+                      Show <MathText>{`\\lambda(n)`}</MathText> instead
+                    </span>
+                  )}
+                </button>
+              ) : null}
+            </div>
+
+            <div
+              className={`mt-3 grid gap-4 ${
+                computedKeySnapshot.d !== '' ? 'md:grid-cols-2' : ''
+              }`}
+            >
               <NumericOutput
-                label={<MathText>{`d = e^{-1} \\bmod \\varphi(n)`}</MathText>}
-                value={computedKeySnapshot.d}
+                label={
+                  <MathText>
+                    {useLambda
+                      ? `\\lambda(n) = \\operatorname{lcm}(p-1,q-1)`
+                      : `\\varphi(n) = (p-1)(q-1)`}
+                  </MathText>
+                }
+                value={
+                  useLambda
+                    ? (lambdaValue ?? computedKeySnapshot.phi)
+                    : computedKeySnapshot.phi
+                }
               />
-            ) : null}
+              {computedKeySnapshot.d !== '' ? (
+                <NumericOutput
+                  label={
+                    <MathText>
+                      {useLambda
+                        ? `d = e^{-1} \\bmod \\lambda(n)`
+                        : `d = e^{-1} \\bmod \\varphi(n)`}
+                    </MathText>
+                  }
+                  value={computedKeySnapshot.d}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
