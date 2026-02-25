@@ -1,5 +1,6 @@
 import type { RsaCiphertextFormat, RsaMode } from '../../../types';
 import NumericOutput from '../../shared/NumericOutput';
+import ToggleGroup from '../../shared/ToggleGroup';
 import {
   errorBoxClass,
   inputClass,
@@ -47,19 +48,16 @@ const RSATextPanel = ({
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="flex min-w-44 flex-col gap-1">
           <span className="text-sm text-purple-300">Ciphertext format</span>
-          <select
+          <ToggleGroup
+            ariaLabel="Ciphertext format"
             value={ciphertextFormat}
-            onChange={(event) =>
-              onCiphertextFormatChange(
-                event.target.value as RsaCiphertextFormat,
-              )
-            }
-            className={`${inputClass} h-10.5`}
-          >
-            <option value="decimal">Decimal</option>
-            <option value="base64">Base64</option>
-            <option value="hex">Hex</option>
-          </select>
+            onChange={onCiphertextFormatChange}
+            options={[
+              { value: 'decimal', label: 'Decimal' },
+              { value: 'base64', label: 'Base64' },
+              { value: 'hex', label: 'Hex' },
+            ]}
+          />
         </label>
       </div>
 

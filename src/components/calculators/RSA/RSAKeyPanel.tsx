@@ -8,11 +8,11 @@ import { computeLambdaN } from '../../../utils/numberTheory';
 import MathText from '../../shared/MathText';
 import NumericInput from '../../shared/NumericInput';
 import NumericOutput from '../../shared/NumericOutput';
+import ToggleGroup from '../../shared/ToggleGroup';
 import {
   errorBoxClass,
   primaryButtonClass,
   secondaryButtonClass,
-  tertiaryButtonClass,
 } from '../../shared/ui';
 
 type RecoverAttemptCounts = {
@@ -369,22 +369,22 @@ const RSAKeyPanel = ({
                 Derived Key Parameters
               </div>
               {lambdaValue ? (
-                <button
-                  type="button"
-                  onClick={() => setShowLambda((value) => !value)}
-                  className={tertiaryButtonClass}
-                  title="Switch between phi(n) and lambda(n)"
-                >
-                  {useLambda ? (
-                    <span>
-                      Show <MathText>{`\\varphi(n)`}</MathText> instead
-                    </span>
-                  ) : (
-                    <span>
-                      Show <MathText>{`\\lambda(n)`}</MathText> instead
-                    </span>
-                  )}
-                </button>
+                <ToggleGroup
+                  minimal
+                  ariaLabel="Derived parameter mode"
+                  value={useLambda ? 'lambda' : 'phi'}
+                  onChange={(next) => setShowLambda(next === 'lambda')}
+                  options={[
+                    {
+                      value: 'phi',
+                      label: <MathText>{`\\varphi(n)`}</MathText>,
+                    },
+                    {
+                      value: 'lambda',
+                      label: <MathText>{`\\lambda(n)`}</MathText>,
+                    },
+                  ]}
+                />
               ) : null}
             </div>
 

@@ -1,8 +1,8 @@
 import type { RsaMode, RsaPrimeSizeType } from '../../../types';
+import ToggleGroup from '../../shared/ToggleGroup';
 import {
   inputClass,
   primaryButtonClass,
-  secondaryButtonClass,
 } from '../../shared/ui';
 
 type Props = {
@@ -35,28 +35,15 @@ const RSAHeaderControls = ({
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onModeChange('encrypt')}
-          className={
-            mode === 'encrypt'
-              ? primaryButtonClass
-              : `${secondaryButtonClass} disabled:opacity-100`
-          }
-        >
-          Encrypt Mode
-        </button>
-        <button
-          type="button"
-          onClick={() => onModeChange('decrypt')}
-          className={
-            mode === 'decrypt'
-              ? primaryButtonClass
-              : `${secondaryButtonClass} disabled:opacity-100`
-          }
-        >
-          Decrypt Mode
-        </button>
+        <ToggleGroup
+          ariaLabel="RSA mode"
+          value={mode}
+          onChange={onModeChange}
+          options={[
+            { value: 'encrypt', label: 'Encrypt Mode' },
+            { value: 'decrypt', label: 'Decrypt Mode' },
+          ]}
+        />
       </div>
       <div className="ml-auto flex items-center justify-end gap-2 whitespace-nowrap">
         {primeGenWorking ? (

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
 import NumericOutput from '../shared/NumericOutput';
+import ToggleGroup from '../shared/ToggleGroup';
 import {
   errorBoxClass,
   primaryButtonClass,
   secondaryButtonClass,
-  tertiaryButtonClass,
 } from '../shared/ui';
 import {
   extendedGCD,
@@ -183,22 +183,22 @@ const GCDCalculator: React.FC = () => {
                 Modular inverse
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSwapInv((v) => !v)}
-                className={tertiaryButtonClass}
-                title="Swap which value is inverted and which is the modulus"
-              >
-                {swapInv ? (
-                  <span>
-                    Show <MathText>{`a^{-1} \\bmod b`}</MathText> instead
-                  </span>
-                ) : (
-                  <span>
-                    Show <MathText>{`b^{-1} \\bmod a`}</MathText> instead
-                  </span>
-                )}
-              </button>
+              <ToggleGroup
+                minimal
+                ariaLabel="Modular inverse target"
+                value={swapInv ? 'b_inv_mod_a' : 'a_inv_mod_b'}
+                onChange={(next) => setSwapInv(next === 'b_inv_mod_a')}
+                options={[
+                  {
+                    value: 'a_inv_mod_b',
+                    label: <MathText>{`a^{-1} \\bmod b`}</MathText>,
+                  },
+                  {
+                    value: 'b_inv_mod_a',
+                    label: <MathText>{`b^{-1} \\bmod a`}</MathText>,
+                  },
+                ]}
+              />
             </div>
 
             {!invInfo ? null : invInfo.ok ? (
