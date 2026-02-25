@@ -6,11 +6,14 @@ import React, {
   useState,
 } from 'react';
 import type {
+  PrimeGeneratorWorkerRequest,
+  PrimeGeneratorWorkerResponse,
   RsaCiphertextFormat,
   RsaComputedKeySnapshot,
   RsaDecryptCompletedMessage,
   RsaDecryptRecoverRequest,
   RsaDecryptWorkerResponse,
+  RsaAlphabetMode,
   RsaEncodingMode,
   RsaFactorCheckVerdict,
   RsaMode,
@@ -43,57 +46,11 @@ import {
   runRsaRecoveryPrechecks,
   selectDefaultPublicExponent,
 } from '../../../utils/numberTheory';
-import type { RsaAlphabetMode } from '../../../types';
 import RSAEncodingPanel from './RSAEncodingPanel';
 import RSAHeaderControls from './RSAHeaderControls';
 import RSAKeyPanel from './RSAKeyPanel';
 import RSAKeyPairPemPanel from './RSAKeyPairPemPanel';
 import RSATextPanel from './RSATextPanel';
-
-type PrimeGenerateRequest = {
-  type: 'generate';
-  jobId: number;
-  options: {
-    size: number;
-    sizeType: RsaPrimeSizeType;
-    count: number;
-  };
-};
-
-type PrimeGenerateCompletedMessage = {
-  type: 'completed';
-  jobId: number;
-  elapsedMs: number;
-  primes: string[];
-};
-
-type PrimeGenerateProgressMessage = {
-  type: 'progress';
-  jobId: number;
-  completed: number;
-  total: number;
-  prime: string;
-};
-
-type PrimeGenerateHeartbeatMessage = {
-  type: 'heartbeat';
-  jobId: number;
-  primeIndex: number;
-  total: number;
-  attempts: number;
-};
-
-type PrimeGenerateErrorMessage = {
-  type: 'error';
-  jobId: number;
-  message: string;
-};
-
-type PrimeGenerateResponse =
-  | PrimeGenerateCompletedMessage
-  | PrimeGenerateProgressMessage
-  | PrimeGenerateHeartbeatMessage
-  | PrimeGenerateErrorMessage;
 
 const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
@@ -922,7 +879,7 @@ const RSAEncryptorContainer: React.FC = () => {
     const dispatchPrimeJob = (worker: Worker) => {
       const nextJobId = ++primeGenJobIdRef.current;
       primeGenWorkerJobIdRef.current.set(worker, nextJobId);
-      const request: PrimeGenerateRequest = {
+      const request: PrimeGeneratorWorkerRequest = {
         type: 'generate',
         jobId: nextJobId,
         options: {
@@ -958,7 +915,7 @@ const RSAEncryptorContainer: React.FC = () => {
     };
 
     for (const worker of primeGenWorkersRef.current) {
-      worker.onmessage = (event: MessageEvent<PrimeGenerateResponse>) => {
+      worker.onmessage = (event: MessageEvent<PrimeGeneratorWorkerResponse>) => {
         if (resolved || primeGenRunIdRef.current !== runId) return;
         const msg = event.data;
         const expectedJobId = primeGenWorkerJobIdRef.current.get(worker);

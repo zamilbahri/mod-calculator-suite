@@ -11,44 +11,13 @@ import {
   MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
   validatePrimeGenerationRequest,
-  type PrimeGenerationOptions,
-  type PrimeSizeType,
 } from '../../utils/numberTheory';
-
-type WorkerProgressMessage = {
-  type: 'progress';
-  jobId: number;
-  completed: number;
-  total: number;
-  prime: string;
-};
-
-type WorkerCompletedMessage = {
-  type: 'completed';
-  jobId: number;
-  elapsedMs: number;
-  primes: string[];
-};
-
-type WorkerHeartbeatMessage = {
-  type: 'heartbeat';
-  jobId: number;
-  primeIndex: number;
-  total: number;
-  attempts: number;
-};
-
-type WorkerErrorMessage = {
-  type: 'error';
-  jobId: number;
-  message: string;
-};
-
-type WorkerResponse =
-  | WorkerProgressMessage
-  | WorkerHeartbeatMessage
-  | WorkerCompletedMessage
-  | WorkerErrorMessage;
+import type {
+  PrimeGenerationOptions,
+  PrimeGeneratorWorkerRequest,
+  PrimeGeneratorWorkerResponse,
+  PrimeSizeType,
+} from '../../types';
 
 const createPrimeGeneratorWorker = (): Worker =>
   new Worker(
@@ -183,7 +152,7 @@ const PrimeGenerator: React.FC = () => {
     workerJobIdRef.current.set(worker, nextJobId);
     let lastAttemptsForJob = 0;
 
-    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    worker.onmessage = (event: MessageEvent<PrimeGeneratorWorkerResponse>) => {
       if (runIdRef.current !== runId) return;
       const msg = event.data;
       const expectedJobId = workerJobIdRef.current.get(worker);
@@ -254,11 +223,12 @@ const PrimeGenerator: React.FC = () => {
       }
     };
 
-    worker.postMessage({
+    const request: PrimeGeneratorWorkerRequest = {
       type: 'generate',
       jobId: nextJobId,
       options: { ...options, count: 1 },
-    });
+    };
+    worker.postMessage(request);
   };
 
   const generate = () => {

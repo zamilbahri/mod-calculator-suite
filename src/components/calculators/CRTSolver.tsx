@@ -17,9 +17,9 @@ import type {
   CRTSolution,
   CRTEquationParsed,
   CRTEquationDraft,
-} from '../../types/index.ts';
+} from '../../types';
 import CRTInputPanel from './CRTInputPanel';
-import { MathErrorView } from '../shared/MathErrorView.tsx';
+import { MathErrorView } from '../shared/MathErrorView';
 
 const BASE_URL = 'https://zamilbahri.github.io/crt-solver';
 const MAX_MODULUS_PRODUCT_FOR_URL = 10n ** 12n;
