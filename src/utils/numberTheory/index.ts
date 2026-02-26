@@ -82,7 +82,6 @@ export type {
   PrimeSizeType,
   PrimeGenerationOptions,
   PrimeGenerationCountPolicy,
-  PrimeGeneratorWorkerGenerateRequest,
   PrimeGeneratorWorkerRequest,
   PrimeGeneratorWorkerProgressMessage,
   PrimeGeneratorWorkerHeartbeatMessage,
