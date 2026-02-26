@@ -1,0 +1,11 @@
+[**mod-calculator-suite v0.0.0**](../../../../README.md)
+
+***
+
+[mod-calculator-suite](../../../../modules.md) / [components/shared/ui](../README.md) / secondaryButtonClass
+
+# Variable: secondaryButtonClass
+
+> `const` **secondaryButtonClass**: `"px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 hover:bg-gray-600"` = `'px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 hover:bg-gray-600'`
+
+Defined in: [src/components/shared/ui.ts:9](https://github.com/zamilbahri/mod-calculator-suite/blob/2f2122262b150cd50415b3faadc5f6a8ef538e1a/src/components/shared/ui.ts#L9)
