@@ -101,10 +101,8 @@ test('generatePrimes can generate multiple small-bit primes (< 64 bits)', (t) =>
   }
 });
 
-test('generatePrimes single-prime generation scales with doubling bits up to 512', (t) => {
-  // const bitSizes = [8, 16, 32, 64, 128, 256, 512, 1024];
-  // const bitSizes = [4096];
-  const bitSizes = Array(2).fill(4096);
+test('generatePrimes single-prime generation scales with doubling bits', (t) => {
+  const bitSizes = [8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 
   for (const bits of bitSizes) {
     const start = performance.now();
