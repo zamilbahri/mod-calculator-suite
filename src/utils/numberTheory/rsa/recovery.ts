@@ -1,3 +1,9 @@
+/**
+ * RSA modulus factor-recovery helpers.
+ *
+ * Includes prechecks, range partitioning, and wheel-based trial division
+ * with heartbeat reporting for long-running scans.
+ */
 import type { RsaRecoverWorkerId } from '../../../types';
 import { PRIMES_LESS_THAN_1K } from '../primality/constants';
 import { gcd } from '../core';
@@ -6,17 +12,42 @@ type AttemptState = {
   attempts: number;
 };
 
+/**
+ * Found RSA factor pair.
+ *
+ * @typedef {object} RsaFactorPair
+ * @property {bigint} p - First factor.
+ * @property {bigint} q - Second factor.
+ */
 export type RsaFactorPair = {
   p: bigint;
   q: bigint;
 };
 
+/**
+ * Worker scan range for factor recovery.
+ *
+ * @typedef {object} RsaRecoveryRange
+ * @property {RsaRecoverWorkerId} workerId - Worker identity for UI/state mapping.
+ * @property {bigint} start - Inclusive range start.
+ * @property {bigint} [endExclusive] - Optional exclusive range end.
+ */
 export type RsaRecoveryRange = {
   workerId: RsaRecoverWorkerId;
   start: bigint;
   endExclusive?: bigint;
 };
 
+/**
+ * Options for wheel-scan factor search over a bounded range.
+ *
+ * @interface FindPrimeFactorsInRangeOptions
+ * @property {bigint} n - Target composite modulus.
+ * @property {bigint} startInclusive - Inclusive scan start.
+ * @property {bigint | null} endExclusive - Exclusive scan end, or null for unbounded.
+ * @property {(attempts: number) => void} onHeartbeat - Progress callback.
+ * @property {number} [heartbeatBatchSize] - Callback interval in attempted divisors.
+ */
 export interface FindPrimeFactorsInRangeOptions {
   n: bigint;
   startInclusive: bigint;
@@ -25,6 +56,16 @@ export interface FindPrimeFactorsInRangeOptions {
   heartbeatBatchSize?: number;
 }
 
+/**
+ * Options for fast factor prechecks before long scans.
+ *
+ * @interface RunRsaRecoveryPrechecksOptions
+ * @property {bigint} n - Target modulus.
+ * @property {bigint} sqrtN - Integer square root of `n`.
+ * @property {bigint | null} [pCandidate] - Optional known/guessed `p`.
+ * @property {bigint | null} [qCandidate] - Optional known/guessed `q`.
+ * @property {readonly bigint[]} [quickPrecheckPrimes] - Additional small primes to test.
+ */
 export interface RunRsaRecoveryPrechecksOptions {
   n: bigint;
   sqrtN: bigint;
@@ -46,9 +87,18 @@ const WHEEL_OFFSETS: bigint[] = (() => {
   return residues;
 })();
 
+/** Prime factors represented in the wheel base and always prechecked first. */
 export const RSA_WHEEL_PRECHECK_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
+/** Additional quick precheck primes (small primes under 1000 excluding wheel base). */
 export const RSA_QUICK_PRECHECK_PRIMES = PRIMES_LESS_THAN_1K.slice(5);
 
+/**
+ * Emits heartbeat callback at configured attempt intervals.
+ *
+ * @param {AttemptState} state - Mutable attempt counter state.
+ * @param {(attempts: number) => void} onHeartbeat - Heartbeat callback.
+ * @param {number} heartbeatBatchSize - Emit period in attempts.
+ */
 const emitHeartbeatMaybe = (
   state: AttemptState,
   onHeartbeat: (attempts: number) => void,
@@ -59,6 +109,17 @@ const emitHeartbeatMaybe = (
   }
 };
 
+/**
+ * Scans a candidate range using a 2*3*5*7*11 wheel to skip obvious composites.
+ *
+ * @param {bigint} n - Target modulus.
+ * @param {bigint} startInclusive - Inclusive starting divisor.
+ * @param {bigint | null} endExclusive - Optional exclusive end.
+ * @param {AttemptState} state - Shared attempt counter.
+ * @param {(attempts: number) => void} onHeartbeat - Progress callback.
+ * @param {number} heartbeatBatchSize - Callback interval.
+ * @returns {bigint | null} Found factor or null.
+ */
 const scanWheelRange = (
   n: bigint,
   startInclusive: bigint,
@@ -109,6 +170,13 @@ const tryFactorFromCandidate = (
   return { p: candidate, q: other };
 };
 
+/**
+ * Computes integer square root `floor(sqrt(n))`.
+ *
+ * @param {bigint} n - Non-negative integer.
+ * @returns {bigint} Integer square root.
+ * @throws {Error} If `n` is negative.
+ */
 export const integerSqrt = (n: bigint): bigint => {
   if (n < 0n) throw new Error('Square root is undefined for negative values.');
   if (n < 2n) return n;
@@ -121,6 +189,12 @@ export const integerSqrt = (n: bigint): bigint => {
   }
 };
 
+/**
+ * Searches for a factor pair in a scan range.
+ *
+ * @param {FindPrimeFactorsInRangeOptions} options - Range scan options.
+ * @returns {RsaFactorPair | null} Found factor pair or null.
+ */
 export const findPrimeFactorsInRange = ({
   n,
   startInclusive,
@@ -143,6 +217,12 @@ export const findPrimeFactorsInRange = ({
   return null;
 };
 
+/**
+ * Runs fast factor prechecks before expensive scans.
+ *
+ * @param {RunRsaRecoveryPrechecksOptions} options - Precheck options.
+ * @returns {RsaFactorPair | null} Factor pair when detected, otherwise null.
+ */
 export const runRsaRecoveryPrechecks = ({
   n,
   sqrtN,
@@ -184,6 +264,15 @@ export const runRsaRecoveryPrechecks = ({
   return null;
 };
 
+/**
+ * Builds two complementary scan ranges for parallel recovery workers.
+ *
+ * `balanced` scans near expected balanced factors, while `low` covers smaller divisors.
+ *
+ * @param {bigint} n - Target modulus.
+ * @param {bigint} trialUpperExclusive - Exclusive upper bound for trial division.
+ * @returns {RsaRecoveryRange[]} Worker range assignments.
+ */
 export const buildRsaRecoveryRanges = (
   n: bigint,
   trialUpperExclusive: bigint,

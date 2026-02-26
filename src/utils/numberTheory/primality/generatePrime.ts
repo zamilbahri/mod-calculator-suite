@@ -1,3 +1,6 @@
+/**
+ * Prime generation utilities with configurable size, method, and progress hooks.
+ */
 import { MathValidationError } from '../validation';
 import { randomBigIntInRange } from '../random';
 import { primalityCheck } from './checkPrime';
@@ -12,16 +15,36 @@ import {
   PRIME_GENERATION_COUNT_POLICIES,
 } from './constants';
 
+/**
+ * Estimates bit size from a requested prime size unit.
+ *
+ * @param {number} size - Requested prime size.
+ * @param {PrimeSizeType} sizeType - Size unit (`bits` or `digits`).
+ * @returns {number} Conservative bit estimate used for policy checks.
+ */
 function estimatedBitsForSize(size: number, sizeType: PrimeSizeType): number {
   if (sizeType === 'bits') return size;
   // digits -> conservative bit estimate
   return Math.ceil(size * Math.log2(10));
 }
 
+/**
+ * Returns the policy bucket for a requested bit size.
+ *
+ * @param {number} bits - Requested bits.
+ * @returns {(typeof PRIME_GENERATION_COUNT_POLICIES)[number] | null} Matching policy or null.
+ */
 function getPrimeGenerationCountPolicy(bits: number) {
   return PRIME_GENERATION_COUNT_POLICIES.find((p) => bits <= p.maxBits) ?? null;
 }
 
+/**
+ * Returns UI warning threshold for requested generation parameters.
+ *
+ * @param {number} size - Requested prime size.
+ * @param {PrimeSizeType} sizeType - Size unit.
+ * @returns {number | null} Count threshold that should trigger warning, or null.
+ */
 export function getPrimeGenerationWarnThreshold(
   size: number,
   sizeType: PrimeSizeType,
@@ -30,6 +53,14 @@ export function getPrimeGenerationWarnThreshold(
   return getPrimeGenerationCountPolicy(bits)?.warnAt ?? null;
 }
 
+/**
+ * Validates prime generation request constraints.
+ *
+ * @param {number} size - Prime size.
+ * @param {PrimeSizeType} sizeType - Size unit.
+ * @param {number} [count=1] - Number of primes requested.
+ * @returns {string | null} Error message when invalid, otherwise null.
+ */
 export function validatePrimeGenerationRequest(
   size: number,
   sizeType: PrimeSizeType,
@@ -65,6 +96,12 @@ export function validatePrimeGenerationRequest(
   return null;
 }
 
+/**
+ * Computes `10^exp` as bigint.
+ *
+ * @param {number} exp - Decimal exponent.
+ * @returns {bigint} Power of ten.
+ */
 function pow10(exp: number): bigint {
   return BigInt(`1${'0'.repeat(exp)}`);
 }
@@ -99,6 +136,16 @@ function isCandidatePrime(
   return check.isProbablePrime;
 }
 
+/**
+ * Generates one probable prime with periodic attempt callbacks.
+ *
+ * @param {number} size - Target size.
+ * @param {PrimeSizeType} sizeType - Size unit.
+ * @param {PrimalityMethodSelection} method - Primality method.
+ * @param {number} millerRabinRounds - Miller-Rabin rounds.
+ * @param {(attempts: number) => void} [onAttempt] - Called every 32 attempts.
+ * @returns {bigint} Generated prime candidate that passed the selected test.
+ */
 function generateOnePrime(
   size: number,
   sizeType: PrimeSizeType,
@@ -123,6 +170,16 @@ function generateOnePrime(
   }
 }
 
+/**
+ * Generates one or more primes synchronously.
+ *
+ * @param {PrimeGenerationOptions} options - Prime generation parameters.
+ * @returns {bigint[]} Generated primes.
+ * @throws {MathValidationError} If request constraints are invalid.
+ *
+ * @example
+ * generatePrimes({ size: 512, sizeType: 'bits', count: 2 })
+ */
 export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
   const count = options.count ?? 1;
   const method = options.method ?? 'Auto';
@@ -151,6 +208,17 @@ export function generatePrimes(options: PrimeGenerationOptions): bigint[] {
   return primes;
 }
 
+/**
+ * Generates one or more primes with progress and heartbeat callbacks.
+ *
+ * Heartbeats report attempt counts while searching for each prime.
+ *
+ * @param {PrimeGenerationOptions} options - Prime generation parameters.
+ * @param {(completed: number, total: number, prime: bigint) => void} [onProgress] - Called after each prime.
+ * @param {(primeIndex: number, total: number, attempts: number) => void} [onHeartbeat] - Called during attempts.
+ * @returns {Promise<bigint[]>} Generated primes.
+ * @throws {MathValidationError} If request constraints are invalid.
+ */
 export async function generatePrimesWithProgress(
   options: PrimeGenerationOptions,
   onProgress?: (completed: number, total: number, prime: bigint) => void,

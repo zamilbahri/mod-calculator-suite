@@ -1,3 +1,6 @@
+/**
+ * RSA JWK and PEM export helpers via Web Crypto API.
+ */
 import { bigIntToBytes } from './encoding';
 import { computeLambdaN, computeModulus, computeQInverseModP } from './keyMath';
 import { modNormalize } from '../core';
@@ -5,6 +8,16 @@ import { modNormalize } from '../core';
 type RsaPemAlgorithmName = 'RSA-OAEP' | 'RSASSA-PKCS1-v1_5';
 type RsaPemHashName = 'SHA-256' | 'SHA-384' | 'SHA-512';
 
+/**
+ * Core RSA private-key numeric components.
+ *
+ * @interface RsaPrivateKeyComponents
+ * @property {bigint} p - Prime factor `p`.
+ * @property {bigint} q - Prime factor `q`.
+ * @property {bigint} e - Public exponent.
+ * @property {bigint} d - Private exponent.
+ * @property {bigint} [n] - Optional modulus, derived from `p*q` when omitted.
+ */
 export interface RsaPrivateKeyComponents {
   p: bigint;
   q: bigint;
@@ -13,16 +26,39 @@ export interface RsaPrivateKeyComponents {
   n?: bigint;
 }
 
+/**
+ * Inputs for exporting both public and private PEM keys.
+ *
+ * @interface RsaPemExportOptions
+ * @property {RsaPemAlgorithmName} [algorithmName='RSA-OAEP'] - WebCrypto algorithm profile.
+ * @property {RsaPemHashName} [hashName='SHA-256'] - Hash function for import params.
+ */
 export interface RsaPemExportOptions extends RsaPrivateKeyComponents {
   algorithmName?: RsaPemAlgorithmName;
   hashName?: RsaPemHashName;
 }
 
+/**
+ * PEM export output pair.
+ *
+ * @interface RsaPemExportResult
+ * @property {string} privateKeyPem - PKCS#8 private key PEM.
+ * @property {string} publicKeyPem - SPKI public key PEM.
+ */
 export interface RsaPemExportResult {
   privateKeyPem: string;
   publicKeyPem: string;
 }
 
+/**
+ * Inputs for exporting only public key PEM.
+ *
+ * @interface RsaPublicPemExportOptions
+ * @property {bigint} n - RSA modulus.
+ * @property {bigint} e - Public exponent.
+ * @property {RsaPemAlgorithmName} [algorithmName='RSA-OAEP'] - WebCrypto algorithm profile.
+ * @property {RsaPemHashName} [hashName='SHA-256'] - Hash function for import params.
+ */
 export interface RsaPublicPemExportOptions {
   n: bigint;
   e: bigint;
@@ -56,11 +92,25 @@ const wrapPem = (
   return `-----BEGIN ${label}-----\n${chunked}\n-----END ${label}-----`;
 };
 
+/**
+ * Encodes a non-negative bigint as unsigned Base64URL integer.
+ *
+ * @param {bigint} value - RSA integer component.
+ * @returns {string} Base64URL-encoded unsigned integer.
+ * @throws {Error} If `value < 0`.
+ */
 export const bigIntToBase64UrlUInt = (value: bigint): string => {
   if (value < 0n) throw new Error('RSA integer values must be non-negative.');
   return toBase64Url(bigIntToBytes(value));
 };
 
+/**
+ * Builds a public RSA JWK from modulus and exponent.
+ *
+ * @param {bigint} n - RSA modulus.
+ * @param {bigint} e - Public exponent.
+ * @returns {JsonWebKey} Public JWK.
+ */
 export const buildRsaPublicJwk = (n: bigint, e: bigint): JsonWebKey => ({
   kty: 'RSA',
   n: bigIntToBase64UrlUInt(n),
@@ -68,6 +118,13 @@ export const buildRsaPublicJwk = (n: bigint, e: bigint): JsonWebKey => ({
   ext: true,
 });
 
+/**
+ * Builds a private RSA JWK including CRT parameters.
+ *
+ * @param {RsaPrivateKeyComponents} components - Private key components.
+ * @returns {JsonWebKey} Private JWK with CRT fields.
+ * @throws {Error} If RSA parameters produce invalid `lambda(n)`.
+ */
 export const buildRsaPrivateJwk = ({
   p,
   q,
@@ -113,6 +170,13 @@ const getKeyUsages = (
   };
 };
 
+/**
+ * Exports an RSA key pair to PEM strings.
+ *
+ * @param {RsaPemExportOptions} options - RSA components and optional WebCrypto profile.
+ * @returns {Promise<RsaPemExportResult>} PEM-encoded private/public key pair.
+ * @throws {Error} If WebCrypto is unavailable or import/export operations fail.
+ */
 export const exportRsaKeyPairToPem = async ({
   p,
   q,
@@ -166,6 +230,13 @@ export const exportRsaKeyPairToPem = async ({
   };
 };
 
+/**
+ * Exports an RSA public key to PEM.
+ *
+ * @param {RsaPublicPemExportOptions} options - Public components and optional WebCrypto profile.
+ * @returns {Promise<string>} SPKI public key PEM.
+ * @throws {Error} If WebCrypto is unavailable or import/export operations fail.
+ */
 export const exportRsaPublicKeyToPem = async ({
   n,
   e,

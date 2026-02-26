@@ -1,3 +1,8 @@
+/**
+ * RSA helper barrel for encoding, key math, crypto operations,
+ * PEM export, and recovery utilities.
+ */
+// Encoding helpers
 export {
   DEFAULT_CUSTOM_ALPHABET,
   isAsciiOnly,
@@ -10,6 +15,7 @@ export {
   type BuildAlphabetEncodingOptions,
 } from './encoding';
 
+// Key math helpers
 export {
   DEFAULT_RSA_PUBLIC_EXPONENT,
   INVALID_RSA_EXPONENT_HINT,
@@ -22,6 +28,7 @@ export {
   computePrivateExponent,
 } from './keyMath';
 
+// Encryption and decryption helpers
 export {
   resolveRsaBlockSize,
   encryptRsaMessage,
@@ -33,6 +40,7 @@ export {
   type DecryptRsaMessageOptions,
 } from './crypto';
 
+// JWK/PEM export helpers
 export {
   bigIntToBase64UrlUInt,
   buildRsaPublicJwk,
@@ -45,6 +53,7 @@ export {
   type RsaPemExportResult,
 } from './pem';
 
+// Recovery helpers
 export {
   RSA_WHEEL_PRECHECK_PRIMES,
   RSA_QUICK_PRECHECK_PRIMES,

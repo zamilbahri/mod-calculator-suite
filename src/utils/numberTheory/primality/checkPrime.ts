@@ -1,3 +1,9 @@
+/**
+ * Primality decision orchestration.
+ *
+ * Performs small-prime trial division first, then chooses Baillie-PSW or
+ * Miller-Rabin based on user selection and input size.
+ */
 import type { PrimalityCheckResult } from '../../../types';
 import type { PrimalityCheckOptions } from '../../../types';
 import { PRIMES_LESS_THAN_1K, TWO_POW_64 } from './constants';
@@ -7,6 +13,26 @@ import {
   millerRabinErrorProbabilityExponent,
 } from './millerRabin';
 
+/**
+ * Runs primality checks with method selection and confidence metadata.
+ *
+ * Selection rules:
+ * - `Auto`: small-prime precheck, then BPSW for `n < 2^64`, otherwise Miller-Rabin.
+ * - `Baillie-PSW`: forces BPSW after small-prime precheck.
+ * - `Miller-Rabin`: forces randomized Miller-Rabin after small-prime precheck.
+ *
+ * Verdict semantics:
+ * - `Prime`: deterministically resolved by small-prime checks or BPSW in `< 2^64` range.
+ * - `Probably Prime`: probabilistic result.
+ * - `Composite`: witness or factor found.
+ *
+ * `errorProbabilityExponent = k` corresponds to an upper bound of about `2^-k`
+ * for false-prime classification in Miller-Rabin mode.
+ *
+ * @param {bigint} n - Integer to test.
+ * @param {PrimalityCheckOptions | number} [options=24] - Method options or round count shortcut.
+ * @returns {PrimalityCheckResult} Structured primality result.
+ */
 export function primalityCheck(
   n: bigint,
   options: PrimalityCheckOptions | number = 24,

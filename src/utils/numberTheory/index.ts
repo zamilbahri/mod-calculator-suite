@@ -1,11 +1,22 @@
+/**
+ * Public number-theory module barrel.
+ *
+ * Re-exports validated parsing, core arithmetic, CRT solving, primality,
+ * prime generation, and RSA helpers from a single import surface.
+ */
+// Validation helpers
 export {
   MathValidationError,
   isNonNegativeIntegerString,
   parseBigIntStrict,
 } from './validation';
+// Core arithmetic
 export { modNormalize, gcd, extendedGCD, modPow, modInverse } from './core';
+// Chinese Remainder Theorem
 export { solveCRT } from './crt';
+// Primality checks
 export { primalityCheck } from './primality/checkPrime';
+// Prime generation
 export {
   generatePrimes,
   generatePrimesWithProgress,
@@ -16,6 +27,7 @@ export {
   MAX_GENERATED_PRIME_BITS,
   MAX_GENERATED_PRIME_DIGITS,
 } from './primality/constants';
+// RSA helpers
 export {
   DEFAULT_CUSTOM_ALPHABET,
   isAsciiOnly,
@@ -63,6 +75,7 @@ export {
   type FindPrimeFactorsInRangeOptions,
   type RunRsaRecoveryPrechecksOptions,
 } from './rsa';
+// Public number-theory types
 export type {
   PrimalityMethodSelection,
   PrimalityCheckOptions,

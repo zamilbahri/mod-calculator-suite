@@ -1,9 +1,20 @@
+/**
+ * Shared primality and prime-generation constants.
+ */
 import type { PrimeGenerationCountPolicy } from '../../../types';
 
+/** `2^64`, boundary for deterministic BPSW treatment in this module. */
 export const TWO_POW_64 = 1n << 64n;
+/** Maximum supported prime size in bits for generation requests. */
 export const MAX_GENERATED_PRIME_BITS = 4096;
+/** Maximum supported prime size in decimal digits for generation requests. */
 export const MAX_GENERATED_PRIME_DIGITS = 1300;
 
+/**
+ * Size-dependent generation limits and warning thresholds.
+ *
+ * `warnAt` controls when UI should begin warning about expensive requests.
+ */
 export const PRIME_GENERATION_COUNT_POLICIES: PrimeGenerationCountPolicy[] = [
   { maxBits: 1536, maxCount: 10, warnAt: 11 }, // don't display warning if less than 1536 bits
   { maxBits: 2048, maxCount: 10, warnAt: 5 },
@@ -11,6 +22,7 @@ export const PRIME_GENERATION_COUNT_POLICIES: PrimeGenerationCountPolicy[] = [
   { maxBits: 4096, maxCount: 4, warnAt: 1 },
 ];
 
+/** Small primes used for fast trial division and recovery prechecks. */
 export const PRIMES_LESS_THAN_1K = [
   2n,
   3n,

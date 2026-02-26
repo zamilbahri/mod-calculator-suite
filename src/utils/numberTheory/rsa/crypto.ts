@@ -1,3 +1,8 @@
+/**
+ * RSA encryption/decryption helpers for multiple text encodings.
+ *
+ * Supports packed-radix, fixed-width numeric, and PKCS#1 v1.5 text flows.
+ */
 import type { RsaCiphertextFormat, RsaEncodingMode } from '../../../types';
 import { modPow } from '../core';
 import { parseBigIntStrict } from '../validation';
@@ -9,12 +14,31 @@ import {
   type AlphabetEncoding,
 } from './encoding';
 
+/**
+ * Options for resolving effective RSA block size from UI inputs.
+ *
+ * @interface ResolveRsaBlockSizeOptions
+ * @property {string} blockSizeInput - Raw user input for block size.
+ * @property {RsaEncodingMode} encodingMode - Selected encoding mode.
+ * @property {number} defaultBlockSize - Derived default block size.
+ */
 export interface ResolveRsaBlockSizeOptions {
   blockSizeInput: string;
   encodingMode: RsaEncodingMode;
   defaultBlockSize: number;
 }
 
+/**
+ * Inputs required to encrypt RSA plaintext.
+ *
+ * @interface EncryptRsaMessageOptions
+ * @property {string} message - Plaintext message.
+ * @property {bigint} e - Public exponent.
+ * @property {bigint} n - RSA modulus.
+ * @property {RsaEncodingMode} encodingMode - Text encoding mode.
+ * @property {number} blockSize - Symbols (or digits) per block.
+ * @property {AlphabetEncoding} encoding - Alphabet mapping.
+ */
 export interface EncryptRsaMessageOptions {
   message: string;
   e: bigint;
@@ -24,6 +48,17 @@ export interface EncryptRsaMessageOptions {
   encoding: AlphabetEncoding;
 }
 
+/**
+ * Inputs required to decrypt RSA ciphertext.
+ *
+ * @interface DecryptRsaMessageOptions
+ * @property {string} ciphertext - Decimal ciphertext blocks separated by whitespace.
+ * @property {bigint} d - Private exponent.
+ * @property {bigint} n - RSA modulus.
+ * @property {RsaEncodingMode} encodingMode - Text encoding mode.
+ * @property {number} blockSize - Symbols (or digits) per block.
+ * @property {AlphabetEncoding} encoding - Alphabet mapping.
+ */
 export interface DecryptRsaMessageOptions {
   ciphertext: string;
   d: bigint;
@@ -33,6 +68,13 @@ export interface DecryptRsaMessageOptions {
   encoding: AlphabetEncoding;
 }
 
+/**
+ * Encodes bytes to Base64 using browser or Node runtime APIs.
+ *
+ * @param {Uint8Array} bytes - Bytes to encode.
+ * @returns {string} Base64 string.
+ * @throws {Error} If no Base64 runtime helper is available.
+ */
 const bytesToBase64 = (bytes: Uint8Array): string => {
   if (typeof btoa === 'function') {
     let binary = '';
@@ -47,6 +89,13 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
   throw new Error('Base64 conversion is not available in this environment.');
 };
 
+/**
+ * Decodes Base64/Base64URL text to bytes.
+ *
+ * @param {string} value - Base64-like input.
+ * @returns {Uint8Array} Decoded bytes.
+ * @throws {Error} If no Base64 runtime helper is available.
+ */
 const base64ToBytes = (value: string): Uint8Array => {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const remainder = normalized.length % 4;
@@ -98,6 +147,16 @@ const hexToBytes = (hex: string): Uint8Array => {
 const normalizeHexToken = (value: string): string =>
   value.replace(/^0x/i, '').replace(/[^0-9a-fA-F]/g, '');
 
+/**
+ * Formats decimal ciphertext blocks into selected external format.
+ *
+ * @param {readonly string[]} blocks - Decimal ciphertext blocks.
+ * @param {RsaCiphertextFormat} format - Target output format.
+ * @returns {string} Serialized ciphertext.
+ *
+ * @example
+ * formatCiphertextBlocks(['12345', '999'], 'hex')
+ */
 export const formatCiphertextBlocks = (
   blocks: readonly string[],
   format: RsaCiphertextFormat,
@@ -112,6 +171,22 @@ export const formatCiphertextBlocks = (
   return format === 'hex' ? encodedBlocks.join('\n') : encodedBlocks.join(' ');
 };
 
+/**
+ * Parses formatted ciphertext input into whitespace-separated decimal blocks.
+ *
+ * Accepts:
+ * - decimal blocks (`"123 456"`)
+ * - hex lines/tokens (`"0A FF"` or one block per line)
+ * - Base64/Base64URL tokens
+ *
+ * @param {string} ciphertext - Raw ciphertext input.
+ * @param {RsaCiphertextFormat} format - Input format.
+ * @returns {string} Decimal block string for internal RSA math.
+ * @throws {Error} If token parsing fails.
+ *
+ * @example
+ * parseCiphertextInputToDecimal('0A FF', 'hex')
+ */
 export const parseCiphertextInputToDecimal = (
   ciphertext: string,
   format: RsaCiphertextFormat,
@@ -173,6 +248,16 @@ export const parseCiphertextInputToDecimal = (
   return decimalBlocks.join(' ');
 };
 
+/**
+ * Resolves effective block size from input and mode defaults.
+ *
+ * In fixed-width mode, blank input defaults to `defaultBlockSize * 2`
+ * because each symbol consumes two digits.
+ *
+ * @param {ResolveRsaBlockSizeOptions} options - Block size options.
+ * @returns {number} Positive integer block size.
+ * @throws {Error} If parsed block size is not a positive integer.
+ */
 export const resolveRsaBlockSize = ({
   blockSizeInput,
   encodingMode,
@@ -192,6 +277,11 @@ export const resolveRsaBlockSize = ({
   return blockSize;
 };
 
+/**
+ * Fills an array with non-zero random bytes for PKCS#1 v1.5 PS.
+ *
+ * @param {Uint8Array} bytes - Padding bytes to populate.
+ */
 const fillNonZeroRandomBytes = (bytes: Uint8Array) => {
   crypto.getRandomValues(bytes);
   for (let i = 0; i < bytes.length; i += 1) {
@@ -203,6 +293,14 @@ const fillNonZeroRandomBytes = (bytes: Uint8Array) => {
   }
 };
 
+/**
+ * Decodes a PKCS#1 v1.5 encoded message block.
+ *
+ * @param {bigint} message - Decrypted message integer.
+ * @param {bigint} n - RSA modulus.
+ * @returns {string} Decoded UTF-8 plaintext.
+ * @throws {Error} If block structure or padding is invalid.
+ */
 const decodePkcs1V15Message = (message: bigint, n: bigint): string => {
   const k = getModulusByteLength(n);
   let em = bigIntToBytes(message);
@@ -237,6 +335,23 @@ const decodePkcs1V15Message = (message: bigint, n: bigint): string => {
   return new TextDecoder().decode(em.slice(sep + 1));
 };
 
+/**
+ * Encrypts plaintext message into decimal RSA ciphertext blocks.
+ *
+ * @param {EncryptRsaMessageOptions} options - Encryption options.
+ * @returns {string[]} Decimal ciphertext blocks.
+ * @throws {Error} For invalid alphabet data, invalid key constraints, or block-size violations.
+ *
+ * @example
+ * encryptRsaMessage({
+ *   message: 'HELLO',
+ *   e: 65537n,
+ *   n: 999630013489n,
+ *   encodingMode: 'radix',
+ *   blockSize: 2,
+ *   encoding,
+ * })
+ */
 export const encryptRsaMessage = ({
   message,
   e,
@@ -354,6 +469,13 @@ export const encryptRsaMessage = ({
   return blocks;
 };
 
+/**
+ * Decrypts decimal RSA ciphertext blocks into plaintext.
+ *
+ * @param {DecryptRsaMessageOptions} options - Decryption options.
+ * @returns {string} Decoded plaintext.
+ * @throws {Error} If ciphertext is malformed or symbol decoding fails.
+ */
 export const decryptRsaMessage = ({
   ciphertext,
   d,

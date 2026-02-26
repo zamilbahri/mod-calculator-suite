@@ -1,6 +1,15 @@
+/**
+ * Miller-Rabin probable-prime testing utilities.
+ */
 import { modNormalize, modPow } from '../core';
 import { randomBigIntBelow } from '../random';
 
+/**
+ * Decomposes `n - 1` into `d * 2^s` with odd `d`.
+ *
+ * @param {bigint} n - Candidate integer.
+ * @returns {{ d: bigint; s: number }} Odd component and exponent of two.
+ */
 function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
   let d = n - 1n;
   let s = 0;
@@ -11,6 +20,13 @@ function decomposeNMinusOne(n: bigint): { d: bigint; s: number } {
   return { d, s };
 }
 
+/**
+ * Runs a strong probable-prime test for a single base.
+ *
+ * @param {bigint} n - Candidate integer.
+ * @param {bigint} aIn - Witness base.
+ * @returns {boolean} `true` if `n` passes for this base.
+ */
 export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   if (n < 2n) return false;
   if (n === 2n || n === 3n) return true;
@@ -30,6 +46,13 @@ export function isStrongProbablePrimeForBase(n: bigint, aIn: bigint): boolean {
   return false;
 }
 
+/**
+ * Runs Miller-Rabin with randomized unique bases.
+ *
+ * @param {bigint} n - Candidate integer.
+ * @param {number} [iterations=24] - Number of rounds.
+ * @returns {{ isProbablePrime: boolean; witness?: bigint }} Result and witness for composite findings.
+ */
 export function isMillerRabinProbablePrime(
   n: bigint,
   iterations = 24,
@@ -58,6 +81,14 @@ export function isMillerRabinProbablePrime(
   return { isProbablePrime: true };
 }
 
+/**
+ * Returns the Miller-Rabin false-prime bound exponent.
+ *
+ * For `t` rounds, error is bounded by approximately `2^(-2t)`.
+ *
+ * @param {number} iterations - Number of rounds.
+ * @returns {number} Exponent in `2^-k`.
+ */
 export function millerRabinErrorProbabilityExponent(iterations: number): number {
   return 2 * iterations;
 }
