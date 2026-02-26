@@ -11,7 +11,7 @@ import type {
   RsaCiphertextFormat,
   RsaComputedKeySnapshot,
   RsaDecryptCompletedMessage,
-  RsaDecryptRecoverRequest,
+  RsaDecryptWorkerRequest,
   RsaDecryptWorkerResponse,
   RsaAlphabetMode,
   RsaEncodingMode,
@@ -652,7 +652,7 @@ const RSAEncryptorContainer: React.FC = () => {
         finishWithFactors(msg);
       };
 
-      const request: RsaDecryptRecoverRequest = {
+      const request: RsaDecryptWorkerRequest = {
         type: 'recover',
         jobId,
         workerId: range.workerId,
