@@ -75,8 +75,47 @@ export interface RunRsaRecoveryPrechecksOptions {
 }
 
 const HEARTBEAT_BATCH_SIZE = 5_000_000;
-const RSA_RECOVERY_MIN_START = 7n;
 const WHEEL_BASE = 2n * 3n * 5n * 7n * 11n;
+/** Prime factors represented in the wheel base and always prechecked first. */
+export const RSA_WHEEL_PRECHECK_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
+/** Additional quick precheck primes (small primes under 1000 excluding wheel base). */
+export const RSA_QUICK_PRECHECK_PRIMES = PRIMES_LESS_THAN_1K.slice(
+  RSA_WHEEL_PRECHECK_PRIMES.length,
+);
+
+const isPrimeByTrialDivision = (value: bigint): boolean => {
+  if (value <= 1n) return false;
+  if (value === 2n || value === 3n) return true;
+  if (value % 2n === 0n) return false;
+
+  let divisor = 3n;
+  while (divisor * divisor <= value) {
+    if (value % divisor === 0n) return false;
+    divisor += 2n;
+  }
+  return true;
+};
+
+/**
+ * Returns the next prime immediately above `n`.
+ *
+ * This helper is intentionally used with the final prime in `PRIMES_LESS_THAN_1K`
+ * so recovery scanning starts just above guaranteed precheck coverage.
+ */
+const nextSmallPrime = (n: bigint): bigint => {
+  let candidate = n + 1n;
+  if (candidate <= 2n) return 2n;
+  if (candidate % 2n === 0n) candidate += 1n;
+  while (!isPrimeByTrialDivision(candidate)) {
+    candidate += 2n;
+  }
+  return candidate;
+};
+
+const RSA_RECOVERY_MIN_START = nextSmallPrime(
+  PRIMES_LESS_THAN_1K[PRIMES_LESS_THAN_1K.length - 1],
+);
+
 const WHEEL_OFFSETS: bigint[] = (() => {
   const residues: bigint[] = [];
   let candidate = 1n;
@@ -86,11 +125,6 @@ const WHEEL_OFFSETS: bigint[] = (() => {
   }
   return residues;
 })();
-
-/** Prime factors represented in the wheel base and always prechecked first. */
-export const RSA_WHEEL_PRECHECK_PRIMES = [2n, 3n, 5n, 7n, 11n] as const;
-/** Additional quick precheck primes (small primes under 1000 excluding wheel base). */
-export const RSA_QUICK_PRECHECK_PRIMES = PRIMES_LESS_THAN_1K.slice(5);
 
 /**
  * Emits heartbeat callback at configured attempt intervals.
