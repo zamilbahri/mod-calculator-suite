@@ -36,9 +36,9 @@ const getThreadOptionLabel = (
 };
 
 const PrimeGenerator: React.FC = () => {
-  const [size, setSize] = useState('');
+  const [size, setSize] = useState('1024');
   const [sizeType, setSizeType] = useState<PrimeSizeType>('bits');
-  const [count, setCount] = useState('1');
+  const [count, setCount] = useState('2');
   const [threads, setThreads] = useState('1');
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -297,9 +297,9 @@ const PrimeGenerator: React.FC = () => {
     terminateWorkers();
     runIdRef.current += 1;
 
-    setSize('');
+    setSize('1024');
     setSizeType('bits');
-    setCount('1');
+    setCount('2');
     setThreads('1');
     setError(null);
     setPrimes([]);
@@ -329,7 +329,7 @@ const PrimeGenerator: React.FC = () => {
             }}
             className={inputClass}
             inputMode="numeric"
-            placeholder={sizeType === 'bits' ? 'e.g. 512' : 'e.g. 155'}
+            placeholder={sizeType === 'bits' ? 'e.g. 1024' : 'e.g. 309'}
           />
         </label>
 
