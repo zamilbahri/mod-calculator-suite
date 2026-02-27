@@ -24,7 +24,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   label,
   value,
   placeholder = 'Enter a non-negative integer',
-  maxDigits: maxLength = 2000,
+  maxDigits: maxLength = 1250,
   minRows,
   rows = 4,
   onChange,
