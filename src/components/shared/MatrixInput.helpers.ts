@@ -1,6 +1,6 @@
 import type { MatrixShape } from '../../types';
 
-export type MatrixTextParseMode = 'space' | 'csv' | 'latex';
+export type MatrixTextParseMode = 'text' | 'csv' | 'latex';
 
 export interface ParsedMatrixTextInput {
   shape: MatrixShape;
@@ -17,7 +17,9 @@ export function matrixValuesToCsvText(values: string[][]): string {
 
 export function matrixValuesToLatexText(values: string[][]): string {
   const rowSeparator = ' \\\\';
-  const rows = values.map((row) => `  ${row.join(' & ')}`).join(`${rowSeparator}\n`);
+  const rows = values
+    .map((row) => `  ${row.join(' & ')}`)
+    .join(`${rowSeparator}\n`);
   return `$$ \\begin{bmatrix}\n${rows}\n\\end{bmatrix} $$`;
 }
 
@@ -56,7 +58,7 @@ function buildParsed(values: string[][]): ParsedMatrixTextInput {
 
 function parseSpaceOrCsvTextByMode(
   text: string,
-  mode: 'space' | 'csv',
+  mode: 'text' | 'csv',
 ): ParsedMatrixTextInput {
   const raw = text.replace(/\r/g, '');
   if (raw.trim() === '') {
@@ -70,7 +72,9 @@ function parseSpaceOrCsvTextByMode(
       );
     }
   } else if (!/^[\d\s]+$/.test(raw)) {
-    throw new Error('Text matrix input must contain only numbers and whitespace.');
+    throw new Error(
+      'Text matrix input must contain only numbers and whitespace.',
+    );
   }
 
   const lines = raw.split('\n').filter((line) => line.trim() !== '');

@@ -1,10 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import CopyButton from './CopyButton';
 import type { MatrixTextParseMode } from './MatrixInput.helpers';
-import { matrixValuesToMode, parseMatrixTextByMode } from './MatrixInput.helpers';
+import {
+  matrixValuesToMode,
+  parseMatrixTextByMode,
+} from './MatrixInput.helpers';
 import ToggleGroup from './ToggleGroup';
 import { labelClass } from './ui';
 
+const DEFAULT_PARSE_MODE = 'text';
 export interface MatrixOutputProps {
   value: string;
   label?: React.ReactNode;
@@ -16,9 +20,10 @@ const MatrixOutput: React.FC<MatrixOutputProps> = ({
   value,
   label,
   className = '',
-  sourceMode = 'space',
+  sourceMode = DEFAULT_PARSE_MODE,
 }) => {
-  const [displayMode, setDisplayMode] = useState<MatrixTextParseMode>('space');
+  const [displayMode, setDisplayMode] =
+    useState<MatrixTextParseMode>(DEFAULT_PARSE_MODE);
 
   const displayValue = useMemo(() => {
     if (!value) return '';
@@ -49,7 +54,7 @@ const MatrixOutput: React.FC<MatrixOutputProps> = ({
             value={displayMode}
             onChange={setDisplayMode}
             options={[
-              { value: 'space', label: 'Text' },
+              { value: 'text', label: 'Text' },
               { value: 'csv', label: 'CSV' },
               { value: 'latex', label: 'LaTeX' },
             ]}

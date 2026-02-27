@@ -5,12 +5,13 @@ import ToggleGroup from './ToggleGroup';
 import CopyButton from './CopyButton';
 import type { MatrixTextParseMode } from './MatrixInput.helpers';
 import {
-  matrixValuesToCsvText,
   matrixValuesToMode,
   parseMatrixTextByMode,
   parseStrictMatrixTextInput,
 } from './MatrixInput.helpers';
 import { inputClass, labelClass } from './ui';
+
+const DEFAULT_PARSE_MODE = 'text';
 
 export interface MatrixInputProps {
   matrixSymbol: string;
@@ -33,9 +34,10 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
   maxSize = 10,
   onInputErrorChange,
 }) => {
-  const [parseMode, setParseMode] = useState<MatrixTextParseMode>('csv');
+  const [parseMode, setParseMode] =
+    useState<MatrixTextParseMode>(DEFAULT_PARSE_MODE);
   const [matrixText, setMatrixText] = useState(() =>
-    matrixValuesToCsvText(values),
+    matrixValuesToMode(values, DEFAULT_PARSE_MODE),
   );
 
   const applyTextInput = (nextText: string, mode: MatrixTextParseMode) => {
@@ -58,7 +60,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
         <span className={labelClass}>
           <MathText>{`${matrixSymbol} \\bmod ${modulusLabel}`}</MathText>
         </span>
@@ -73,7 +75,10 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
                   matrixText,
                   parseMode,
                 );
-                const converted = matrixValuesToMode(parsedCurrent.values, next);
+                const converted = matrixValuesToMode(
+                  parsedCurrent.values,
+                  next,
+                );
                 setMatrixText(converted);
                 setParseMode(next);
                 applyTextInput(converted, next);
@@ -83,7 +88,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
               }
             }}
             options={[
-              { value: 'space', label: 'Text' },
+              { value: 'text', label: 'Text' },
               { value: 'csv', label: 'CSV' },
               { value: 'latex', label: 'LaTeX' },
             ]}
@@ -92,7 +97,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
         </div>
       </div>
 
-      <div className="mt-4">
+      <div>
         <textarea
           value={matrixText}
           onChange={(e) => {
@@ -104,7 +109,8 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
               return;
             }
 
-            const allowedPattern = parseMode === 'csv' ? /^[\d\s,]*$/ : /^[\d\s]*$/;
+            const allowedPattern =
+              parseMode === 'csv' ? /^[\d\s,]*$/ : /^[\d\s]*$/;
             if (allowedPattern.test(next)) {
               setMatrixText(next);
               applyTextInput(next, parseMode);
@@ -126,3 +132,5 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
 };
 
 export default MatrixInput;
+
+
