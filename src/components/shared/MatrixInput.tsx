@@ -15,7 +15,6 @@ const DEFAULT_PARSE_MODE = 'text';
 
 export interface MatrixInputProps {
   matrixSymbol: string;
-  modulusLabel: string;
   values: string[][];
   onShapeChange: (shape: MatrixShape, resizedValues: string[][]) => void;
   onValuesChange: (values: string[][]) => void;
@@ -26,7 +25,6 @@ export interface MatrixInputProps {
 
 const MatrixInput: React.FC<MatrixInputProps> = ({
   matrixSymbol,
-  modulusLabel,
   values,
   onShapeChange,
   onValuesChange,
@@ -62,7 +60,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className={labelClass}>
-          <MathText>{`${matrixSymbol} \\bmod ${modulusLabel}`}</MathText>
+          <span>Matrix</span> <MathText>{`${matrixSymbol}`}</MathText>
         </span>
         <div className="flex items-center gap-2">
           <ToggleGroup
@@ -132,5 +130,3 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
 };
 
 export default MatrixInput;
-
-

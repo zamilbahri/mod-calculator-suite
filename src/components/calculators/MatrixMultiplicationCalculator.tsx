@@ -108,7 +108,6 @@ const MatrixMultiplicationCalculator: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MatrixInput
           matrixSymbol="A"
-          modulusLabel={modulus.trim() === '' ? 'm' : modulus.trim()}
           values={matrixA}
           minSize={1}
           maxSize={10}
@@ -131,7 +130,6 @@ const MatrixMultiplicationCalculator: React.FC = () => {
 
         <MatrixInput
           matrixSymbol="B"
-          modulusLabel={modulus.trim() === '' ? 'm' : modulus.trim()}
           values={matrixB}
           minSize={1}
           maxSize={10}
@@ -179,4 +177,3 @@ const MatrixMultiplicationCalculator: React.FC = () => {
 };
 
 export default MatrixMultiplicationCalculator;
-

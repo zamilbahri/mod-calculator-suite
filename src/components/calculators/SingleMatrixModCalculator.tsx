@@ -70,7 +70,6 @@ const SingleMatrixModCalculator: React.FC = () => {
   }, [modulus, matrixInput]);
 
   const combinedInputError = matrixInputError || parsedInput.error;
-  const modulusLabel = modulus.trim() === '' ? 'm' : modulus.trim();
 
   const reducedView = useMemo(() => {
     if (!parsedInput.matrix || !parsedInput.m) return '';
@@ -193,7 +192,6 @@ const SingleMatrixModCalculator: React.FC = () => {
 
         <MatrixInput
           matrixSymbol="A"
-          modulusLabel={modulusLabel}
           values={matrixInput}
           minSize={1}
           maxSize={10}
@@ -264,7 +262,7 @@ const SingleMatrixModCalculator: React.FC = () => {
       {!combinedInputError && reducedView ? (
         <div className="mt-6 space-y-4">
           <MatrixOutput
-            label={<MathText>{`A \\bmod m`}</MathText>}
+            label={<MathText>{`A \\bmod ${modulus}`}</MathText>}
             value={reducedView}
           />
         </div>
@@ -301,4 +299,3 @@ const SingleMatrixModCalculator: React.FC = () => {
 };
 
 export default SingleMatrixModCalculator;
-
