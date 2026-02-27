@@ -6,6 +6,8 @@ import MathText from './components/shared/MathText';
 import GCDCalculator from './components/calculators/GCDCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
+import SingleMatrixModCalculator from './components/calculators/SingleMatrixModCalculator';
+import MatrixMultiplicationCalculator from './components/calculators/MatrixMultiplicationCalculator';
 import PrimeChecker from './components/calculators/PrimeChecker';
 import PrimeGenerator from './components/calculators/PrimeGenerator';
 import RSAEncryptorContainer from './components/calculators/RSA/RSAEncryptorContainer';
@@ -120,6 +122,35 @@ const App: React.FC = () => {
               }
             >
               <CRTSolver />
+            </CalculatorCard>
+
+            <CalculatorCard
+              title="Matrix Modular Determinant, RREF, and Inverse Calcualor"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Normalize a matrix</span>
+                  <MathText className="text-purple-200">{`A \\bmod m`}</MathText>
+                  <span>, or evaluate</span>
+                  <MathText className="text-purple-200">{`\\det(A),\\;A^{-1},\\;\\operatorname{RREF}(A)`}</MathText>
+                  <span>mod</span>
+                  <MathText className="text-purple-200">m</MathText>.
+                </span>
+              }
+            >
+              <SingleMatrixModCalculator />
+            </CalculatorCard>
+
+            <CalculatorCard
+              title="Matrix Multiplication Calculator"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Compute</span>
+                  <MathText className="text-purple-200">{`A \\cdot B \\bmod m`}</MathText>
+                  <span>for two user-provided matrices.</span>
+                </span>
+              }
+            >
+              <MatrixMultiplicationCalculator />
             </CalculatorCard>
           </CalculatorGroup>
         </div>
