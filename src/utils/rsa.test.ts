@@ -19,6 +19,7 @@ import {
   parseCiphertextInputToDecimal,
   resolveRsaBlockSize,
   runRsaRecoveryPrechecks,
+  RSA_QUICK_PRECHECK_PRIMES,
 } from './numberTheory';
 
 test('RSA key math helpers compute expected values for classic sample', () => {
@@ -154,10 +155,19 @@ test('RSA recovery helpers find factors and build expected worker ranges', () =>
   });
   assert.deepEqual(found, { p: 13n, q: 23n });
 
-  const ranges = buildRsaRecoveryRanges(n, 100n);
-  assert.equal(ranges.length, 2);
-  assert.equal(ranges[0].workerId, 'balanced');
-  assert.equal(ranges[1].workerId, 'low');
+  const smallRanges = buildRsaRecoveryRanges(n, sqrtN + 1n);
+  assert.equal(smallRanges.length, 0);
+
+  const largeN = 10_000_000_000n;
+  const largeRanges = buildRsaRecoveryRanges(largeN, integerSqrt(largeN) + 1n);
+  assert.equal(largeRanges.length, 2);
+  assert.equal(largeRanges[0].workerId, 'balanced');
+  assert.equal(largeRanges[1].workerId, 'low');
+  assert.equal(largeRanges[1].endExclusive, largeRanges[0].start);
+  const lastQuickPrecheckPrime =
+    RSA_QUICK_PRECHECK_PRIMES[RSA_QUICK_PRECHECK_PRIMES.length - 1];
+  assert.notEqual(lastQuickPrecheckPrime, undefined);
+  assert.ok(largeRanges[1].start > lastQuickPrecheckPrime);
 });
 
 test('resolveRsaBlockSize uses defaults and validates bad inputs', () => {
