@@ -10,6 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --import tsx --test src/**/*.test.ts",
+    "test-prime": "node --import tsx --test src/utils/prime.test.ts",
+    "test-rsa": "node --import tsx --test src/utils/rsa.test.ts",
+    "test-matrix": "node --import tsx --test src/utils/matrix.test.ts",
     "test:watch": "node --import tsx --test --watch src/**/*.test.ts"
   },
   "dependencies": {
