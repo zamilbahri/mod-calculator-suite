@@ -123,7 +123,9 @@ const App: React.FC = () => {
             >
               <CRTSolver />
             </CalculatorCard>
+          </CalculatorGroup>
 
+          <CalculatorGroup title="Modular Matrix Utilities" defaultOpen>
             <CalculatorCard
               title="Matrix Modular Determinant, RREF, and Inverse Calcualor"
               subtitle={
