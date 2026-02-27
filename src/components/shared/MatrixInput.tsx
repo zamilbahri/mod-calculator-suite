@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { MatrixShape } from '../../types';
 import MathText from './MathText';
 import ToggleGroup from './ToggleGroup';
+import CopyButton from './CopyButton';
 import type { MatrixTextParseMode } from './MatrixInput.helpers';
 import {
   matrixValuesToCsvText,
@@ -61,30 +62,36 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
         <span className={labelClass}>
           <MathText>{`${matrixSymbol} \\bmod ${modulusLabel}`}</MathText>
         </span>
-        <ToggleGroup
-          minimal
-          ariaLabel="Matrix text parse style"
-          value={parseMode}
-          onChange={(next) => {
-            try {
-              const parsedCurrent = parseMatrixTextByMode(matrixText, parseMode);
-              const converted =
-                next === 'csv'
-                  ? matrixValuesToCsvText(parsedCurrent.values)
-                  : matrixValuesToText(parsedCurrent.values);
-              setMatrixText(converted);
-              setParseMode(next);
-              applyTextInput(converted, next);
-            } catch {
-              setParseMode(next);
-              applyTextInput(matrixText, next);
-            }
-          }}
-          options={[
-            { value: 'space', label: 'Space-Separated Text' },
-            { value: 'csv', label: 'CSV' },
-          ]}
-        />
+        <div className="flex items-center gap-2">
+          <ToggleGroup
+            minimal
+            ariaLabel="Matrix text parse style"
+            value={parseMode}
+            onChange={(next) => {
+              try {
+                const parsedCurrent = parseMatrixTextByMode(
+                  matrixText,
+                  parseMode,
+                );
+                const converted =
+                  next === 'csv'
+                    ? matrixValuesToCsvText(parsedCurrent.values)
+                    : matrixValuesToText(parsedCurrent.values);
+                setMatrixText(converted);
+                setParseMode(next);
+                applyTextInput(converted, next);
+              } catch {
+                setParseMode(next);
+                applyTextInput(matrixText, next);
+              }
+            }}
+            options={[
+              { value: 'space', label: 'Text' },
+              { value: 'csv', label: 'CSV' },
+            ]}
+          />
+          <CopyButton value={matrixText} tabIndex={-1} />
+        </div>
       </div>
 
       <div className="mt-4">
