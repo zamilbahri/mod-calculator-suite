@@ -172,3 +172,6 @@ export interface MatrixShape {
 
 /** Bigint matrix representation. */
 export type BigIntMatrix = bigint[][];
+
+/** Bigint vector representation. */
+export type Vector = bigint[];

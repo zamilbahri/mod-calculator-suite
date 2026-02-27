@@ -14,6 +14,21 @@ export {
 export { modNormalize, gcd, extendedGCD, modPow, modInverse } from './core';
 // Chinese Remainder Theorem
 export { solveCRT } from './crt';
+// Matrix arithmetic
+export {
+  reduceMatrixMod,
+  multiplyMatrixMod,
+  assertSquare,
+  assertInvertible,
+  determinantMod,
+  rrefMatrixMod,
+  inverseMatrixMod,
+  generateIdentityMatrix,
+  generateRandomInvertibleMatrixMod,
+  type MatrixRrefModResult,
+} from './matrix';
+// Matrix text adapters
+export { parseMatrixInput, matrixToString } from './matrixText';
 // Primality checks
 export { primalityCheck } from './primality/checkPrime';
 // Prime generation
@@ -88,4 +103,5 @@ export type {
   PrimeGeneratorWorkerCompletedMessage,
   PrimeGeneratorWorkerErrorMessage,
   PrimeGeneratorWorkerResponse,
+  Vector,
 } from '../../types';

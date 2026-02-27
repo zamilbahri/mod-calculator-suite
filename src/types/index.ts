@@ -17,6 +17,7 @@ export type {
   PrimeGeneratorWorkerResponse,
   MatrixShape,
   BigIntMatrix,
+  Vector,
 } from './numberTheory';
 
 export type {
