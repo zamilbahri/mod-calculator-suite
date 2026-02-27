@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
 import MatrixInput from '../shared/MatrixInput';
 import NumericInput from '../shared/NumericInput';
-import NumericOutput from '../shared/NumericOutput';
+import MatrixOutput from '../shared/MatrixOutput';
 import {
   errorBoxClass,
   primaryButtonClass,
@@ -171,7 +171,7 @@ const MatrixMultiplicationCalculator: React.FC = () => {
 
       {result ? (
         <div className="mt-6">
-          <NumericOutput label={resultLabel} value={result} />
+          <MatrixOutput label={resultLabel} value={result} />
         </div>
       ) : null}
     </div>
@@ -179,3 +179,4 @@ const MatrixMultiplicationCalculator: React.FC = () => {
 };
 
 export default MatrixMultiplicationCalculator;
+

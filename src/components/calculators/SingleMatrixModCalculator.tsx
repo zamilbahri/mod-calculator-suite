@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import MathText from '../shared/MathText';
 import MatrixInput from '../shared/MatrixInput';
 import NumericInput from '../shared/NumericInput';
+import MatrixOutput from '../shared/MatrixOutput';
 import NumericOutput from '../shared/NumericOutput';
 import {
   errorBoxClass,
@@ -262,7 +263,7 @@ const SingleMatrixModCalculator: React.FC = () => {
 
       {!combinedInputError && reducedView ? (
         <div className="mt-6 space-y-4">
-          <NumericOutput
+          <MatrixOutput
             label={<MathText>{`A \\bmod m`}</MathText>}
             value={reducedView}
           />
@@ -280,7 +281,7 @@ const SingleMatrixModCalculator: React.FC = () => {
 
       {rref ? (
         <div className="mt-4">
-          <NumericOutput
+          <MatrixOutput
             label={<MathText>{`\\operatorname{RREF}(A) \\bmod m`}</MathText>}
             value={rref}
           />
@@ -289,7 +290,7 @@ const SingleMatrixModCalculator: React.FC = () => {
 
       {inverse ? (
         <div className="mt-4">
-          <NumericOutput
+          <MatrixOutput
             label={<MathText>{`A^{-1} \\bmod m`}</MathText>}
             value={inverse}
           />
@@ -300,3 +301,4 @@ const SingleMatrixModCalculator: React.FC = () => {
 };
 
 export default SingleMatrixModCalculator;
+
