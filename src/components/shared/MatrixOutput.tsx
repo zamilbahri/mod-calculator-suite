@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import CopyButton from './CopyButton';
 import type { MatrixTextParseMode } from './MatrixInput.helpers';
-import {
-  matrixValuesToCsvText,
-  matrixValuesToText,
-  parseMatrixTextByMode,
-} from './MatrixInput.helpers';
+import { matrixValuesToMode, parseMatrixTextByMode } from './MatrixInput.helpers';
 import ToggleGroup from './ToggleGroup';
 import { labelClass } from './ui';
 
@@ -29,9 +25,7 @@ const MatrixOutput: React.FC<MatrixOutputProps> = ({
 
     try {
       const parsed = parseMatrixTextByMode(value, sourceMode);
-      return displayMode === 'csv'
-        ? matrixValuesToCsvText(parsed.values)
-        : matrixValuesToText(parsed.values);
+      return matrixValuesToMode(parsed.values, displayMode);
     } catch {
       return value;
     }
@@ -57,6 +51,7 @@ const MatrixOutput: React.FC<MatrixOutputProps> = ({
             options={[
               { value: 'space', label: 'Text' },
               { value: 'csv', label: 'CSV' },
+              { value: 'latex', label: 'LaTeX' },
             ]}
           />
           <CopyButton value={displayValue} tabIndex={0} />
@@ -72,4 +67,3 @@ const MatrixOutput: React.FC<MatrixOutputProps> = ({
 };
 
 export default MatrixOutput;
-

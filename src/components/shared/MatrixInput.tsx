@@ -6,7 +6,7 @@ import CopyButton from './CopyButton';
 import type { MatrixTextParseMode } from './MatrixInput.helpers';
 import {
   matrixValuesToCsvText,
-  matrixValuesToText,
+  matrixValuesToMode,
   parseMatrixTextByMode,
   parseStrictMatrixTextInput,
 } from './MatrixInput.helpers';
@@ -73,10 +73,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
                   matrixText,
                   parseMode,
                 );
-                const converted =
-                  next === 'csv'
-                    ? matrixValuesToCsvText(parsedCurrent.values)
-                    : matrixValuesToText(parsedCurrent.values);
+                const converted = matrixValuesToMode(parsedCurrent.values, next);
                 setMatrixText(converted);
                 setParseMode(next);
                 applyTextInput(converted, next);
@@ -88,6 +85,7 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
             options={[
               { value: 'space', label: 'Text' },
               { value: 'csv', label: 'CSV' },
+              { value: 'latex', label: 'LaTeX' },
             ]}
           />
           <CopyButton value={matrixText} tabIndex={-1} />
@@ -99,7 +97,15 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
           value={matrixText}
           onChange={(e) => {
             const next = e.target.value;
-            if (/^[\d\s,]*$/.test(next)) {
+
+            if (parseMode === 'latex') {
+              setMatrixText(next);
+              applyTextInput(next, parseMode);
+              return;
+            }
+
+            const allowedPattern = parseMode === 'csv' ? /^[\d\s,]*$/ : /^[\d\s]*$/;
+            if (allowedPattern.test(next)) {
               setMatrixText(next);
               applyTextInput(next, parseMode);
             }
@@ -107,7 +113,11 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
           className={`${inputClass} min-h-28 font-mono`}
           spellCheck={false}
           placeholder={
-            parseMode === 'csv' ? `1,2,3\n4,5,6\n7,8,9` : `1 2 3\n4 5 6\n7 8 9`
+            parseMode === 'csv'
+              ? `1,2,3\n4,5,6\n7,8,9`
+              : parseMode === 'latex'
+                ? `$$ \\begin{bmatrix}\n1 & 2 & 3 \\\\n4 & 5 & 6 \\\\n7 & 8 & 9\n\\end{bmatrix} $$`
+                : `1 2 3\n4 5 6\n7 8 9`
           }
         />
       </div>
@@ -116,4 +126,3 @@ const MatrixInput: React.FC<MatrixInputProps> = ({
 };
 
 export default MatrixInput;
-
