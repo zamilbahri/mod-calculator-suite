@@ -3,7 +3,9 @@ import Header from './components/Header';
 import CalculatorCard from './components/CalculatorCard';
 import CalculatorGroup from './components/CalculatorGroup';
 import MathText from './components/shared/MathText';
+import ModularMultiplicationCalculator from './components/calculators/ModularMultiplicationCalculator';
 import GCDCalculator from './components/calculators/GCDCalculator';
+import LinearCongruenceCalculator from './components/calculators/LinearCongruenceCalculator';
 import FastExponentiation from './components/calculators/FastExponentiation';
 import CRTSolver from './components/calculators/CRTSolver';
 import SingleMatrixModCalculator from './components/calculators/SingleMatrixModCalculator';
@@ -68,6 +70,20 @@ const App: React.FC = () => {
 
           <CalculatorGroup title="Modular Number Theory" defaultOpen>
             <CalculatorCard
+              title="Modular Multiplication"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Compute</span>
+                  <MathText className="text-purple-200">
+                    {`a \\cdot b \\pmod{n}`}
+                  </MathText>
+                </span>
+              }
+            >
+              <ModularMultiplicationCalculator />
+            </CalculatorCard>
+
+            <CalculatorCard
               title="EGCD and Modular Inverse Calculator"
               subtitle={
                 <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
@@ -90,6 +106,25 @@ const App: React.FC = () => {
               }
             >
               <GCDCalculator />
+            </CalculatorCard>
+
+            <CalculatorCard
+              title="Linear Congruence Calculator"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Solve equations of the form</span>
+                  <MathText className="text-purple-200">
+                    {'ax \\equiv b \\pmod n'}
+                  </MathText>
+                  <span>or</span>
+                  <MathText className="text-purple-200">
+                    {'ax + kn = b'}
+                  </MathText>
+                  .
+                </span>
+              }
+            >
+              <LinearCongruenceCalculator />
             </CalculatorCard>
 
             <CalculatorCard
