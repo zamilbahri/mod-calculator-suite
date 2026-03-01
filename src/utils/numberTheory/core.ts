@@ -133,3 +133,48 @@ export function modInverse(a: bigint, m: bigint): bigint {
   }
   return ((x % mod) + mod) % mod;
 }
+
+/**
+ * Result of solving a linear congruence `ax ≡ b (mod n)`.
+ */
+export interface LinearCongruenceResult {
+  baseSolution: bigint;
+  d: bigint;
+  mod: bigint;
+  solutions: bigint[];
+}
+
+/**
+ * Solves the linear congruence `ax ≡ b (mod n)`.
+ *
+ * @param {bigint} a - Coefficient of x.
+ * @param {bigint} b - Constant term.
+ * @param {bigint} n - Modulus (must be positive).
+ * @returns {LinearCongruenceResult} Result containing base solution and distinct solutions.
+ * @throws {MathValidationError} If `n <= 0`.
+ */
+export function solveLinearCongruence(a: bigint, b: bigint, n: bigint): LinearCongruenceResult {
+  if (n <= 0n) throw new MathValidationError('n', 'must be positive.');
+
+  const normA = modNormalize(a, n);
+  const normB = modNormalize(b, n);
+
+  const { gcd: d, x } = extendedGCD(normA, n);
+
+  if (normB % d !== 0n) {
+    return { baseSolution: 0n, d, mod: n, solutions: [] };
+  } else {
+    const x0 = modNormalize(x * (normB / d), n);
+    const mod = n / d;
+    const baseSolution = modNormalize(x0, mod);
+
+    const solutions: bigint[] = [];
+    const limit = d > 20n ? 20n : d;
+    for (let i = 0n; i < limit; i++) {
+      solutions.push(baseSolution + i * mod);
+    }
+
+    return { baseSolution, d, mod, solutions };
+  }
+}
+

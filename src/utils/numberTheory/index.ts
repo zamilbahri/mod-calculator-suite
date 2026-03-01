@@ -11,7 +11,15 @@ export {
   parseBigIntStrict,
 } from './validation';
 // Core arithmetic
-export { modNormalize, gcd, extendedGCD, modPow, modInverse } from './core';
+export {
+  modNormalize,
+  gcd,
+  extendedGCD,
+  modPow,
+  modInverse,
+  solveLinearCongruence,
+  type LinearCongruenceResult,
+} from './core';
 // Chinese Remainder Theorem
 export { solveCRT } from './crt';
 // Matrix arithmetic
