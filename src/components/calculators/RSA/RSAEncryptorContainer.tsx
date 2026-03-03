@@ -376,7 +376,6 @@ const RSAEncryptorContainer: React.FC = () => {
       const encoding = buildEncoding();
       const blockSize = resolveRsaBlockSize({
         blockSizeInput,
-        encodingMode,
         defaultBlockSize,
       });
 
@@ -464,7 +463,6 @@ const RSAEncryptorContainer: React.FC = () => {
       const encoding = buildEncoding();
       const blockSize = resolveRsaBlockSize({
         blockSizeInput,
-        encodingMode,
         defaultBlockSize,
       });
       const normalizedCiphertext = parseCiphertextInputToDecimal(

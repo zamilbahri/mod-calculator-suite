@@ -19,17 +19,15 @@ import {
  *
  * @interface ResolveRsaBlockSizeOptions
  * @property {string} blockSizeInput - Raw user input for block size.
- * @property {RsaEncodingMode} encodingMode - Selected encoding mode.
  * @property {number} defaultBlockSize - Derived default block size.
  */
 export interface ResolveRsaBlockSizeOptions {
   blockSizeInput: string;
-  encodingMode: RsaEncodingMode;
   defaultBlockSize: number;
 }
 
 /**
- * Inputs required to encrypt RSA plaintext.
+ * Formats decimal ciphertext blocks into selected external format.
  *
  * @interface EncryptRsaMessageOptions
  * @property {string} message - Plaintext message.
@@ -257,7 +255,6 @@ export const parseCiphertextInputToDecimal = (
  */
 export const resolveRsaBlockSize = ({
   blockSizeInput,
-  encodingMode,
   defaultBlockSize,
 }: ResolveRsaBlockSizeOptions): number => {
   const blockSize =

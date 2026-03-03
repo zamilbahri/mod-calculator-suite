@@ -174,7 +174,6 @@ test('resolveRsaBlockSize uses defaults and validates bad inputs', () => {
   assert.equal(
     resolveRsaBlockSize({
       blockSizeInput: '',
-      encodingMode: 'radix',
       defaultBlockSize: 3,
     }),
     3,
@@ -182,7 +181,6 @@ test('resolveRsaBlockSize uses defaults and validates bad inputs', () => {
   assert.equal(
     resolveRsaBlockSize({
       blockSizeInput: '',
-      encodingMode: 'fixed-width-numeric',
       defaultBlockSize: 3,
     }),
     3,
@@ -192,7 +190,6 @@ test('resolveRsaBlockSize uses defaults and validates bad inputs', () => {
     () =>
       resolveRsaBlockSize({
         blockSizeInput: '0',
-        encodingMode: 'radix',
         defaultBlockSize: 3,
       }),
     /Block size must be a positive integer/,
