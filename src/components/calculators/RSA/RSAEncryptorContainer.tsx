@@ -216,6 +216,7 @@ const RSAEncryptorContainer: React.FC = () => {
   }, [alphabetMode, customAlphabet, customIgnoreCase, customOffset]);
 
   const defaultBlockSize = useMemo(() => {
+    if (encodingMode === 'fixed-width-numeric') return 2;
     try {
       const encoding = buildEncoding();
       const n = nInput.trim() === '' ? null : BigInt(nInput);
@@ -224,7 +225,7 @@ const RSAEncryptorContainer: React.FC = () => {
     } catch {
       return 1;
     }
-  }, [buildEncoding, nInput]);
+  }, [buildEncoding, nInput, encodingMode]);
 
   const encryptOutput =
     ciphertextFormat === 'decimal'

@@ -107,7 +107,7 @@ test('RSA fixed-width numeric mode encrypt/decrypt round-trips deterministic tex
     e,
     n,
     encodingMode: 'fixed-width-numeric',
-    blockSize: 4,
+    blockSize: 2,
     encoding,
   });
 
@@ -116,7 +116,7 @@ test('RSA fixed-width numeric mode encrypt/decrypt round-trips deterministic tex
     d,
     n,
     encodingMode: 'fixed-width-numeric',
-    blockSize: 4,
+    blockSize: 2,
     encoding,
   });
 
@@ -185,7 +185,7 @@ test('resolveRsaBlockSize uses defaults and validates bad inputs', () => {
       encodingMode: 'fixed-width-numeric',
       defaultBlockSize: 3,
     }),
-    6,
+    3,
   );
 
   assert.throws(

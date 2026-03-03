@@ -112,9 +112,7 @@ const RSAEncodingPanel = ({
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-sm text-purple-300">
-            {encodingMode === 'fixed-width-numeric'
-              ? 'Block size (digits per block)'
-              : 'Block size (symbols per block)'}
+            Block size (symbols per block)
           </span>
           <input
             value={blockSizeInput}
@@ -125,11 +123,9 @@ const RSAEncodingPanel = ({
             className={`${inputClass} h-10.5`}
             inputMode="numeric"
             placeholder={
-              encodingMode === 'fixed-width-numeric'
-                ? `Default: ${defaultBlockSize * 2}`
-                : encodingMode === 'pkcs1-v1_5'
-                  ? 'Disabled for PKCS#1 v1.5'
-                  : `Default: ${defaultBlockSize}`
+              encodingMode === 'pkcs1-v1_5'
+                ? 'Disabled for PKCS#1 v1.5'
+                : `Default: ${defaultBlockSize}`
             }
             disabled={encodingMode === 'pkcs1-v1_5'}
           />

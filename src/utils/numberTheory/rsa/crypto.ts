@@ -251,11 +251,8 @@ export const parseCiphertextInputToDecimal = (
 /**
  * Resolves effective block size from input and mode defaults.
  *
- * In fixed-width mode, blank input defaults to `defaultBlockSize * 2`
- * because each symbol consumes two digits.
- *
  * @param {ResolveRsaBlockSizeOptions} options - Block size options.
- * @returns {number} Positive integer block size.
+ * @returns {number} Positive integer block size (in symbols).
  * @throws {Error} If parsed block size is not a positive integer.
  */
 export const resolveRsaBlockSize = ({
@@ -265,9 +262,7 @@ export const resolveRsaBlockSize = ({
 }: ResolveRsaBlockSizeOptions): number => {
   const blockSize =
     blockSizeInput.trim() === ''
-      ? encodingMode === 'fixed-width-numeric'
-        ? defaultBlockSize * 2
-        : defaultBlockSize
+      ? defaultBlockSize
       : Number.parseInt(blockSizeInput, 10);
 
   if (!Number.isInteger(blockSize) || blockSize < 1) {
@@ -412,10 +407,6 @@ export const encryptRsaMessage = ({
   }
 
   if (encodingMode === 'fixed-width-numeric') {
-    if (blockSize % 2 !== 0) {
-      throw new Error('Fixed-width numeric slicing block size must be even.');
-    }
-
     const xSymbol = encoding.charToValue.get(encoding.normalizeChar('X'));
     if (xSymbol === undefined) {
       throw new Error(
@@ -439,12 +430,13 @@ export const encryptRsaMessage = ({
       })
       .join('');
     const padSymbolDigits = xSymbol.toString().padStart(2, '0');
+    const digitBlockSize = blockSize * 2;
 
     let i = 0;
     while (i < numericStream.length) {
-      let digitChunk = numericStream.slice(i, i + blockSize);
-      i += blockSize;
-      while (digitChunk.length < blockSize) digitChunk += padSymbolDigits;
+      let digitChunk = numericStream.slice(i, i + digitBlockSize);
+      i += digitBlockSize;
+      while (digitChunk.length < digitBlockSize) digitChunk += padSymbolDigits;
       const m = BigInt(digitChunk);
       if (m >= n) {
         throw new Error('A plaintext block is >= n. Reduce block size or increase n.');
@@ -470,7 +462,7 @@ export const encryptRsaMessage = ({
 };
 
 /**
- * Decrypts decimal RSA ciphertext blocks into plaintext.
+ * Decrypted decimal RSA ciphertext blocks into plaintext.
  *
  * @param {DecryptRsaMessageOptions} options - Decryption options.
  * @returns {string} Decoded plaintext.
@@ -505,10 +497,8 @@ export const decryptRsaMessage = ({
 
     const decoded: string[] = [];
     if (encodingMode === 'fixed-width-numeric') {
-      if (blockSize % 2 !== 0) {
-        throw new Error('Fixed-width numeric slicing block size must be even.');
-      }
-      const digits = m.toString().padStart(blockSize, '0');
+      const digitBlockSize = blockSize * 2;
+      const digits = m.toString().padStart(digitBlockSize, '0');
       for (let j = 0; j < digits.length; j += 2) {
         const symbol = BigInt(digits.slice(j, j + 2));
         const ch = encoding.valueToChar.get(symbol);
