@@ -103,9 +103,7 @@ const RSAEncodingPanel = ({
             }
             className={`${inputClass} h-10.5`}
           >
-            <option value="fixed-width-numeric">
-              Fixed-width numeric slicing
-            </option>
+            <option value="fixed-width-numeric">Classroom RSA</option>
             <option value="radix">Radix (b-adic) packing</option>
             <option value="pkcs1-v1_5">PKCS#1 v1.5 Padding</option>
           </select>

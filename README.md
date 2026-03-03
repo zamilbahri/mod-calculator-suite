@@ -2,7 +2,8 @@
 
 A React + TypeScript toolkit of calculators for modular number theory and common cryptography tasks. Made for convenience and for reinforcing concepts from a Master’s cryptography course.
 
-### Website 
+### Website
+
 [https://zamilbahri.github.io/mod-calculator-suite](https://zamilbahri.github.io/mod-calculator-suite)
 
 ## Calculator Overview (in UI order)
@@ -12,7 +13,7 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 1. **RSA Calculator**
    - Supports RSA encryption/decryption with configurable key inputs and key derivation tools.
    - Implemented encoding modes:
-     - Fixed-width numeric slicing
+     - Classroom RSA (Fixed-width numeric slicing)
      - Radix (b-adic) packing
      - PKCS#1 v1.5 padding
    - Includes a **Recover primes** decryption option for moduli where `N < 2^72`.

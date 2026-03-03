@@ -89,7 +89,7 @@ test('RSA radix mode encrypt/decrypt round-trips deterministic text', () => {
   assert.equal(plaintext, message);
 });
 
-test('RSA fixed-width numeric mode encrypt/decrypt round-trips deterministic text', () => {
+test('RSA Classroom RSA mode encrypt/decrypt round-trips deterministic text', () => {
   const encoding = buildAlphabetEncoding({
     alphabetMode: 'custom',
     customAlphabet: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',

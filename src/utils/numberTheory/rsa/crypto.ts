@@ -410,12 +410,12 @@ export const encryptRsaMessage = ({
     const xSymbol = encoding.charToValue.get(encoding.normalizeChar('X'));
     if (xSymbol === undefined) {
       throw new Error(
-        'Alphabet must contain "X" for Fixed-width numeric slicing padding.',
+        'Alphabet must contain "X" for Classroom RSA padding.',
       );
     }
     if (xSymbol < 0n || xSymbol > 99n) {
       throw new Error(
-        'Fixed-width numeric slicing requires symbol values in [0, 99].',
+        'Classroom RSA requires symbol values in [0, 99].',
       );
     }
 
@@ -423,7 +423,7 @@ export const encryptRsaMessage = ({
       .map((s) => {
         if (s < 0n || s > 99n) {
           throw new Error(
-            'Fixed-width numeric slicing requires symbol values in [0, 99].',
+            'Classroom RSA requires symbol values in [0, 99].',
           );
         }
         return s.toString().padStart(2, '0');

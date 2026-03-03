@@ -1,6 +1,6 @@
 **mod-calculator-suite v0.0.0**
 
-***
+---
 
 # Modular Calculator Suite
 
@@ -13,7 +13,7 @@ A React + TypeScript calculator suite for RSA workflows and modular number theor
 1. **RSA Calculator**
    - Supports RSA encryption/decryption with configurable key inputs and key derivation tools.
    - Implemented encoding modes:
-     - Fixed-width numeric slicing
+     - Classroom RSA (Fixed-width numeric slicing)
      - Radix (b-adic) packing
      - PKCS#1 v1.5 padding
    - Includes a **Recover primes** decryption option for moduli where `n < 2^72`.
