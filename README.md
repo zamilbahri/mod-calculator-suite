@@ -37,7 +37,7 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 
 3. **Prime Checker**
    - Uses Baillie-PSW and Miller-Rabin primality testing.
-   - For `n < 2^72`, Baillie-PSW is used.
+   - For `n < 2^64`, Baillie-PSW is used.
    - For larger values, Miller-Rabin is used with a default of 24 rounds.
    - The user can configure the number of Miller-Rabin rounds.
 
