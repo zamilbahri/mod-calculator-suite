@@ -1,5 +1,6 @@
 import React from 'react';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import CalculatorCard from './components/CalculatorCard';
 import CalculatorGroup from './components/CalculatorGroup';
 import MathText from './components/shared/MathText';
@@ -236,6 +237,7 @@ const App: React.FC = () => {
             </CalculatorCard>
           </CalculatorGroup>
         </div>
+        <Footer />
       </div>
     </div>
   );
