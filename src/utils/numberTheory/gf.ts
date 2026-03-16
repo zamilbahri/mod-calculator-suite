@@ -197,7 +197,6 @@ export type StepLog = {
  * Computes the Greatest Common Divisor of two polynomials over GF(2) using the Euclidean algorithm.
  * @param a - First polynomial.
  * @param b - Second polynomial.
- * @param fieldSize - The field size n for GF(2^n). Used for context/validation.
  * @returns The monic GCD polynomial and the sequence of logged steps.
  * @example
  * gfGCD([1, 1, 1], [1, 1, 0, 1], 8) // returns { gcd: [1], steps: [...] }
@@ -205,19 +204,7 @@ export type StepLog = {
 export function gfGCD(
   a: number[],
   b: number[],
-  fieldSize: number,
 ): { gcd: number[]; steps: StepLog[] } {
-  if (getDegree(a) >= fieldSize) {
-    throw new Error(
-      `Polynomial a has degree ${getDegree(a)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
-    );
-  }
-  if (getDegree(b) >= fieldSize) {
-    throw new Error(
-      `Polynomial b has degree ${getDegree(b)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
-    );
-  }
-
   let r0 = trimGFPoly(a);
   let r1 = trimGFPoly(b);
   const steps: StepLog[] = [];
@@ -261,7 +248,6 @@ export type EEAStepLog = {
  * Computes the modular inverse of a polynomial over GF(2) using the Extended Euclidean Algorithm.
  * @param a - Polynomial to invert.
  * @param mod - Modulus polynomial.
- * @param fieldSize - The field size n for GF(2^n). Used for context/validation.
  * @returns The inverse polynomial and the sequence of logged steps.
  * @throws {Error} If the GCD of a and mod is not 1 (inverse does not exist).
  * @example
@@ -270,22 +256,7 @@ export type EEAStepLog = {
 export function gfInverse(
   a: number[],
   mod: number[],
-  fieldSize: number,
 ): { inverse: number[]; steps: EEAStepLog[] } {
-  if (getDegree(a) >= fieldSize) {
-    throw new Error(
-      `Polynomial a has degree ${getDegree(a)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
-    );
-  }
-  if (getDegree(mod) === -Infinity) {
-    throw new Error(`Modulus polynomial cannot be zero`);
-  }
-  if (getDegree(a) >= getDegree(mod)) {
-    throw new Error(
-      `Polynomial a must have degree less than modulus, got degree ${getDegree(a)} vs ${getDegree(mod)}`,
-    );
-  }
-
   let old_r = trimGFPoly(mod);
   let r = trimGFPoly(a);
   let old_s = [0];
