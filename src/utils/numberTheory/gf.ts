@@ -26,7 +26,7 @@ export function trimGFPoly(poly: number[]): number[] {
 export function parseGFPoly(input: string): number[] {
   if (!input.trim()) return [0];
   const tokens = input.trim().split(/\s+/).map(Number);
-  const poly = tokens.reverse().map(c => Math.abs(c) % 2);
+  const poly = tokens.reverse().map((c) => Math.abs(c) % 2);
   return trimGFPoly(poly);
 }
 
@@ -40,21 +40,21 @@ export function parseGFPoly(input: string): number[] {
  */
 export function prettyPrint(coeffs: number[]): string {
   const trimmed = trimGFPoly(coeffs);
-  if (trimmed.length === 1 && trimmed[0] === 0) return "0";
-  
+  if (trimmed.length === 1 && trimmed[0] === 0) return '0';
+
   const terms: string[] = [];
   for (let i = trimmed.length - 1; i >= 0; i--) {
     if (trimmed[i] !== 0) {
       if (i === 0) {
-        terms.push("1");
+        terms.push('1');
       } else if (i === 1) {
-        terms.push("x");
+        terms.push('x');
       } else {
         terms.push(`x^${i}`);
       }
     }
   }
-  return terms.length > 0 ? terms.join(" + ") : "0";
+  return terms.length > 0 ? terms.join(' + ') : '0';
 }
 
 /**
@@ -98,34 +98,37 @@ function getDegree(poly: number[]): number {
  * @example
  * gfDivide([1, 0, 0, 0], [1, 1]) // returns { quotient: [1, 1, 1], remainder: [1] }
  */
-export function gfDivide(a: number[], b: number[]): { quotient: number[], remainder: number[] } {
+export function gfDivide(
+  a: number[],
+  b: number[],
+): { quotient: number[]; remainder: number[] } {
   let remainder = trimGFPoly([...a]);
   const divisor = trimGFPoly([...b]);
-  
+
   const degB = getDegree(divisor);
   if (degB === -Infinity) {
-    throw new Error("Division by zero polynomial");
+    throw new Error('Division by zero polynomial');
   }
-  
+
   if (getDegree(remainder) < degB) {
     return { quotient: [0], remainder };
   }
-  
+
   const quotient = new Array(getDegree(remainder) - degB + 1).fill(0);
-  
+
   while (getDegree(remainder) >= degB) {
     const degR = getDegree(remainder);
     const shift = degR - degB;
     quotient[shift] = 1;
-    
+
     const shiftedDivisor = new Array(degR + 1).fill(0);
     for (let i = 0; i <= degB; i++) {
       shiftedDivisor[i + shift] = divisor[i];
     }
-    
+
     remainder = gfAdd(remainder, shiftedDivisor);
   }
-  
+
   return { quotient: trimGFPoly(quotient), remainder };
 }
 
@@ -154,25 +157,25 @@ export function gfMod(a: number[], mod: number[]): number[] {
 export function gfMul(a: number[], b: number[], mod?: number[]): number[] {
   const aTrim = trimGFPoly(a);
   const bTrim = trimGFPoly(b);
-  
+
   if (getDegree(aTrim) === -Infinity || getDegree(bTrim) === -Infinity) {
     return [0];
   }
-  
+
   const result = new Array(aTrim.length + bTrim.length - 1).fill(0);
-  
+
   for (let i = 0; i < aTrim.length; i++) {
     for (let j = 0; j < bTrim.length; j++) {
-      result[i + j] ^= (aTrim[i] & bTrim[j]);
+      result[i + j] ^= aTrim[i] & bTrim[j];
     }
   }
-  
+
   const prod = trimGFPoly(result);
-  
+
   if (mod) {
     return gfMod(prod, mod);
   }
-  
+
   return prod;
 }
 
@@ -199,25 +202,40 @@ export type StepLog = {
  * @example
  * gfGCD([1, 1, 1], [1, 1, 0, 1], 8) // returns { gcd: [1], steps: [...] }
  */
-export function gfGCD(a: number[], b: number[], fieldSize: number): { gcd: number[], steps: StepLog[] } {
+export function gfGCD(
+  a: number[],
+  b: number[],
+  fieldSize: number,
+): { gcd: number[]; steps: StepLog[] } {
+  if (getDegree(a) >= fieldSize) {
+    throw new Error(
+      `Polynomial a has degree ${getDegree(a)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
+    );
+  }
+  if (getDegree(b) >= fieldSize) {
+    throw new Error(
+      `Polynomial b has degree ${getDegree(b)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
+    );
+  }
+
   let r0 = trimGFPoly(a);
   let r1 = trimGFPoly(b);
   const steps: StepLog[] = [];
-  
+
   while (getDegree(r1) !== -Infinity) {
     const { quotient, remainder } = gfDivide(r0, r1);
-    
+
     steps.push({
       dividend: prettyPrint(r0),
       divisor: prettyPrint(r1),
       quotient: prettyPrint(quotient),
-      remainder: prettyPrint(remainder)
+      remainder: prettyPrint(remainder),
     });
-    
+
     r0 = r1;
     r1 = remainder;
   }
-  
+
   return { gcd: r0, steps };
 }
 
@@ -249,40 +267,57 @@ export type EEAStepLog = {
  * @example
  * gfInverse([0, 0, 0, 0, 0, 1], [1, 1, 0, 1, 1, 0, 0, 0, 1], 8) // returns { inverse: [0, 1, 0, 1, 1, 1], steps: [...] }
  */
-export function gfInverse(a: number[], mod: number[], fieldSize: number): { inverse: number[], steps: EEAStepLog[] } {
+export function gfInverse(
+  a: number[],
+  mod: number[],
+  fieldSize: number,
+): { inverse: number[]; steps: EEAStepLog[] } {
+  if (getDegree(a) >= fieldSize) {
+    throw new Error(
+      `Polynomial a has degree ${getDegree(a)} which exceeds max degree ${fieldSize - 1} for GF(2^${fieldSize})`,
+    );
+  }
+  if (getDegree(mod) === -Infinity) {
+    throw new Error(`Modulus polynomial cannot be zero`);
+  }
+  if (getDegree(a) >= getDegree(mod)) {
+    throw new Error(
+      `Polynomial a must have degree less than modulus, got degree ${getDegree(a)} vs ${getDegree(mod)}`,
+    );
+  }
+
   let old_r = trimGFPoly(mod);
   let r = trimGFPoly(a);
   let old_s = [0];
   let s = [1];
-  
+
   const steps: EEAStepLog[] = [];
-  
+
   while (getDegree(r) !== -Infinity) {
     const { quotient, remainder } = gfDivide(old_r, r);
-    
+
     const prod = gfMul(quotient, s);
     const new_s = gfAdd(old_s, prod);
-    
+
     steps.push({
       dividend: prettyPrint(old_r),
       divisor: prettyPrint(r),
       quotient: prettyPrint(quotient),
       remainder: prettyPrint(remainder),
       sOld: prettyPrint(old_s),
-      sNew: prettyPrint(new_s)
+      sNew: prettyPrint(new_s),
     });
-    
+
     old_r = r;
     r = remainder;
-    
+
     old_s = s;
     s = new_s;
   }
-  
-  // In GF(2), the monic GCD must be 1 (degree 0) for an inverse to exist.
+
   if (getDegree(old_r) !== 0 || old_r[0] !== 1) {
-    throw new Error("Inverse does not exist: polynomials are not coprime.");
+    throw new Error('Inverse does not exist: polynomials are not coprime.');
   }
-  
+
   return { inverse: trimGFPoly(old_s), steps };
 }
