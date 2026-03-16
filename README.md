@@ -65,8 +65,7 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 1. **Polynomial Arithmetic over GF(2)**
    - Supports addition, multiplication, division, and remainder for polynomials in $GF(2)$.
    - Computes the Greatest Common Divisor (GCD) using the Euclidean algorithm.
-   - Computes modular inverses using the Extended Euclidean Algorithm (EEA).
-   - Provides human-readable polynomial formatting (e.g., $x^3 + x^2 + 1$).
+   - Computes modular inverses using the Extended Euclidean Algorithm (EEA) with steps.
 
 ## Development
 
