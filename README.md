@@ -57,8 +57,16 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 1. **Matrix Modular Determinant, RREF, and Inverse Calculator**
    - Normalizes a matrix `A mod m`, and computes `det(A) mod m`, `RREF(A) mod m`, and `A^-1 mod m`.
 
-1. **Matrix Multiplcation Caluclator**
+2. **Matrix Multiplcation Caluclator**
    - Calculates the product of two matrices `A x B mod m`.
+
+### Galois Fields
+
+1. **Polynomial Arithmetic over GF(2)**
+   - Supports addition, multiplication, division, and remainder for polynomials in $GF(2)$.
+   - Computes the Greatest Common Divisor (GCD) using the Euclidean algorithm.
+   - Computes modular inverses using the Extended Euclidean Algorithm (EEA).
+   - Provides human-readable polynomial formatting (e.g., $x^3 + x^2 + 1$).
 
 ## Development
 
