@@ -13,6 +13,9 @@ import MatrixMultiplicationCalculator from './components/calculators/MatrixMulti
 import PrimeChecker from './components/calculators/PrimeChecker';
 import PrimeGenerator from './components/calculators/PrimeGenerator';
 import RSAEncryptorContainer from './components/calculators/RSA/RSAEncryptorContainer';
+import GFPolynomialArithmetic from './components/calculators/GFPolynomialArithmetic';
+import GFPolynomialGCD from './components/calculators/GFPolynomialGCD';
+import GFPolynomialInverse from './components/calculators/GFPolynomialInverse';
 
 const App: React.FC = () => {
   return (
@@ -157,6 +160,48 @@ const App: React.FC = () => {
               }
             >
               <CRTSolver />
+            </CalculatorCard>
+          </CalculatorGroup>
+
+          <CalculatorGroup title="Galois Fields (Cryptography)" defaultOpen>
+            <CalculatorCard
+              title="GF(2) Polynomial Arithmetic"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Compute</span>
+                  <MathText className="text-purple-200">{`A(x) + B(x), \\; A(x) \\cdot B(x), \\; A(x) / B(x)`}</MathText>
+                  <span>over</span>
+                  <MathText className="text-purple-200">GF(2)</MathText>.
+                </span>
+              }
+            >
+              <GFPolynomialArithmetic />
+            </CalculatorCard>
+
+            <CalculatorCard
+              title="GF(2) Polynomial GCD"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Compute</span>
+                  <MathText className="text-purple-200">{`\\gcd(A(x), B(x))`}</MathText>
+                  <span>using the Euclidean algorithm.</span>
+                </span>
+              }
+            >
+              <GFPolynomialGCD />
+            </CalculatorCard>
+
+            <CalculatorCard
+              title="GF(2) Polynomial Inverse"
+              subtitle={
+                <span className="flex flex-wrap gap-x-2 gap-y-1 items-baseline">
+                  <span>Compute</span>
+                  <MathText className="text-purple-200">{`A(x)^{-1} \\bmod P(x)`}</MathText>
+                  <span>using the Extended Euclidean Algorithm.</span>
+                </span>
+              }
+            >
+              <GFPolynomialInverse />
             </CalculatorCard>
           </CalculatorGroup>
 
