@@ -9,7 +9,7 @@ import {
   gfMod,
   gfMul,
   gfGCD,
-  gfInverse
+  gfInverse,
 } from './numberTheory/gf';
 
 describe('Galois Field Polynomial Arithmetic', () => {
@@ -110,7 +110,7 @@ describe('Galois Field Polynomial Arithmetic', () => {
       const result = gfMul(
         [0, 1, 0, 1],
         [1, 0, 1, 1, 0, 0, 0, 1],
-        [1, 1, 0, 1, 1, 0, 0, 0, 1]
+        [1, 1, 0, 1, 1, 0, 0, 0, 1],
       );
       // As verified, x^2 + 1 -> [1, 0, 1]
       assert.deepStrictEqual(result, [1, 0, 1]);
@@ -127,13 +127,13 @@ describe('Galois Field Polynomial Arithmetic', () => {
       // x^2 + x + 1 -> [1, 1, 1]
       // x^3 + x^2 + 1 -> [1, 0, 1, 1]
       // GCD = 1 -> [1] (coprime)
-      const { gcd, steps } = gfGCD([1, 1, 1], [1, 0, 1, 1], 8);
+      const { gcd, steps } = gfGCD([1, 1, 1], [1, 0, 1, 1]);
       assert.deepStrictEqual(gcd, [1]);
       assert.ok(steps.length > 0);
     });
 
     it('computes GCD where one polynomial is a multiple of the other', () => {
-      const { gcd } = gfGCD([1, 1], [1, 0, 1], 8);
+      const { gcd } = gfGCD([1, 1], [1, 0, 1]);
       // (x+1) and (x^2+1) = (x+1)(x+1) -> GCD is (x+1) -> [1, 1]
       assert.deepStrictEqual(gcd, [1, 1]);
     });
@@ -147,12 +147,11 @@ describe('Galois Field Polynomial Arithmetic', () => {
       const { inverse, steps } = gfInverse(
         [0, 0, 0, 0, 0, 1],
         [1, 1, 0, 1, 1, 0, 0, 0, 1],
-        8
       );
       // Inverse verified as x^5 + x^4 + x^3 + x -> [0, 1, 0, 1, 1, 1]
       assert.deepStrictEqual(inverse, [0, 1, 0, 1, 1, 1]);
       assert.ok(steps.length > 0);
-      
+
       // Verification log structure
       const lastStep = steps[steps.length - 1];
       assert.ok('sNew' in lastStep);
@@ -162,7 +161,10 @@ describe('Galois Field Polynomial Arithmetic', () => {
     it('throws if polynomials are not coprime', () => {
       // a = x + 1 -> [1, 1]
       // mod = x^2 + 1 -> [1, 0, 1]
-      assert.throws(() => gfInverse([1, 1], [1, 0, 1], 8), /Inverse does not exist/);
+      assert.throws(
+        () => gfInverse([1, 1], [1, 0, 1]),
+        /Inverse does not exist/,
+      );
     });
   });
 });
