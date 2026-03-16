@@ -113,3 +113,7 @@ export type {
   PrimeGeneratorWorkerResponse,
   Vector,
 } from '../../types';
+
+// Galois Fields
+export * from './gf';
+
