@@ -13,7 +13,8 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 1. **RSA Calculator**
    - Supports RSA encryption/decryption with configurable key inputs and key derivation tools.
    - Implemented encoding modes:
-     - Classroom RSA (Fixed-width numeric slicing)
+     - Direct Integer
+     - Fixed-width numeric slicing
      - Radix (b-adic) packing
      - PKCS#1 v1.5 padding
    - Includes a **Recover primes** decryption option for moduli where `N < 2^72`.
@@ -64,7 +65,10 @@ A React + TypeScript toolkit of calculators for modular number theory and common
 
 1. **Polynomial Arithmetic over GF(2)**
    - Supports addition, multiplication, division, and remainder for polynomials in $GF(2)$.
+
+2. **Polynomial GCD over GF(2)**
    - Computes the Greatest Common Divisor (GCD) using the Euclidean algorithm.
+3. **Polynomial Inverse over GF(2)**
    - Computes modular inverses using the Extended Euclidean Algorithm (EEA) with steps.
 
 ## Development
