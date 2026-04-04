@@ -47,7 +47,7 @@ const CalculatorGroup: React.FC<CalculatorGroupProps> = ({
             <Chevron open={open} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg sm:text-xl font-semibold text-purple-200 group-hover:text-purple-100">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight group-hover:text-gray-100">
               {title}
             </h2>
             <span
