@@ -83,6 +83,8 @@ const parseOptionalFactor = (value: string, field: 'p' | 'q'): bigint | null => 
   }
 };
 
+const SHOW_KEY_PAIR_PEM_PANEL = false;
+
 const RSAEncryptorContainer: React.FC = () => {
   const [mode, setMode] = useState<RsaMode>('encrypt');
   const [encodingMode, setEncodingMode] =
@@ -1010,17 +1012,19 @@ const RSAEncryptorContainer: React.FC = () => {
         onCheckRecoveredFactor={checkRecoveredFactor}
       />
 
-      <RSAKeyPairPemPanel
-        onGenerate={generateKeyPairPem}
-        onClear={clearPemOutputs}
-        working={pemWorking}
-        disabled={
-          working || recoverWorking || computeWorking || primeGenWorking
-        }
-        error={pemError}
-        publicKeyPem={publicKeyPem}
-        privateKeyPem={privateKeyPem}
-      />
+      {SHOW_KEY_PAIR_PEM_PANEL && (
+        <RSAKeyPairPemPanel
+          onGenerate={generateKeyPairPem}
+          onClear={clearPemOutputs}
+          working={pemWorking}
+          disabled={
+            working || recoverWorking || computeWorking || primeGenWorking
+          }
+          error={pemError}
+          publicKeyPem={publicKeyPem}
+          privateKeyPem={privateKeyPem}
+        />
+      )}
 
       <RSAEncodingPanel
         alphabetMode={alphabetMode}
