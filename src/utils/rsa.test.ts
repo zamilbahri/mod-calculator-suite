@@ -89,7 +89,7 @@ test('RSA radix mode encrypt/decrypt round-trips deterministic text', () => {
   assert.equal(plaintext, message);
 });
 
-test('RSA Classroom RSA mode encrypt/decrypt round-trips deterministic text', () => {
+test('RSA Fixed-Width Numeric Slicing mode encrypt/decrypt round-trips deterministic text', () => {
   const encoding = buildAlphabetEncoding({
     alphabetMode: 'custom',
     customAlphabet: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -121,6 +121,42 @@ test('RSA Classroom RSA mode encrypt/decrypt round-trips deterministic text', ()
   });
 
   assert.equal(plaintext, message);
+});
+
+test('RSA Direct Integer mode encrypts and decrypts a raw integer', () => {
+  const encoding = buildAlphabetEncoding({
+    alphabetMode: 'ascii',
+    customAlphabet: '',
+    customIgnoreCase: false,
+    customOffset: '0',
+  });
+
+  // Example: (e,n)=(477739, 5936291), plaintext 111 => ciphertext 4953591
+  const e = 477739n;
+  const n = 5936291n;
+  const d = 211n; // pre-computed: p=1049, q=5659, phi=5929584, e*d≡1 (mod phi)
+
+  const ciphertext = encryptRsaMessage({
+    message: '111',
+    e,
+    n,
+    encodingMode: 'direct-integer',
+    blockSize: 1,
+    encoding,
+  });
+
+  assert.equal(ciphertext.join(' '), '4953591');
+
+  const plaintext = decryptRsaMessage({
+    ciphertext: '4953591',
+    d,
+    n,
+    encodingMode: 'direct-integer',
+    blockSize: 1,
+    encoding,
+  });
+
+  assert.equal(plaintext, '111');
 });
 
 test('RSA ciphertext formatting/parsing converts between decimal, hex, and base64', () => {
