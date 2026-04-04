@@ -56,7 +56,8 @@ const MAX_RECOVERY_MODULUS_BITS = 72;
 const MAX_RECOVERY_MODULUS = 1n << BigInt(MAX_RECOVERY_MODULUS_BITS);
 const MAX_RSA_PRIME_BITS_PER_PRIME = 2048;
 const MAX_RSA_PRIME_GEN_THREADS = 2;
-const DEFAULT_RSA_PRIME_BITS_PER_PRIME = 512;
+const DEFAULT_RSA_PRIME_BITS_PER_PRIME = 1024;
+const DEFAULT_RSA_PRIME_DIGITS_PER_PRIME = 309;
 const PRIVATE_PEM_UNAVAILABLE_MESSAGE =
   'Private key PEM unavailable: provide prime factors p and q so d can be computed.';
 
@@ -956,7 +957,14 @@ const RSAEncryptorContainer: React.FC = () => {
         primeGenSize={primeGenSize}
         onPrimeGenSizeChange={setPrimeGenSize}
         primeGenSizeType={primeGenSizeType}
-        onPrimeGenSizeTypeChange={setPrimeGenSizeType}
+        onPrimeGenSizeTypeChange={(type) => {
+          setPrimeGenSizeType(type);
+          setPrimeGenSize(
+            type === 'bits'
+              ? DEFAULT_RSA_PRIME_BITS_PER_PRIME.toString()
+              : DEFAULT_RSA_PRIME_DIGITS_PER_PRIME.toString(),
+          );
+        }}
         maxPrimeBits={MAX_RSA_PRIME_BITS_PER_PRIME}
         maxPrimeDigits={MAX_GENERATED_PRIME_DIGITS}
       />
