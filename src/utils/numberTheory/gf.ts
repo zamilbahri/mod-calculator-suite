@@ -16,18 +16,57 @@ export function trimGFPoly(poly: number[]): number[] {
 }
 
 /**
- * Parses a space-separated string of coefficients (highest degree first) into a polynomial array (index = degree).
+ * Parses a string of coefficients (highest degree first) into a polynomial array (index = degree).
+ * Accepts either space-separated format ("1 1 0 1") or compact format ("1101").
  * All coefficients are taken modulo 2.
- * @param input - Space-separated string of coefficients, e.g., "1 1 0 1"
+ * @param input - Coefficients string, e.g., "1101" or "1 1 0 1"
  * @returns Polynomial array where index = degree.
  * @example
+ * parseGFPoly("1101") // returns [1, 0, 1, 1]
  * parseGFPoly("1 1 0 1") // returns [1, 0, 1, 1]
  */
 export function parseGFPoly(input: string): number[] {
   if (!input.trim()) return [0];
-  const tokens = input.trim().split(/\s+/).map(Number);
+  const trimmed = input.trim();
+  // Use space-separated parsing if spaces are present, otherwise treat each character as a coefficient
+  const tokens = /\s/.test(trimmed)
+    ? trimmed.split(/\s+/).map(Number)
+    : trimmed.split('').map(Number);
   const poly = tokens.reverse().map((c) => Math.abs(c) % 2);
   return trimGFPoly(poly);
+}
+
+/**
+ * Returns a KaTeX-compatible LaTeX string for a polynomial over GF(2).
+ * Uses braced exponents (x^{10}) so multi-digit powers render correctly.
+ * @param coeffs - Polynomial array where index = degree.
+ * @returns LaTeX string, e.g. "x^{3} + x + 1"
+ * @example
+ * toLatex([1, 1, 0, 1]) // returns "x^{3} + x + 1"
+ */
+export function toLatex(coeffs: number[]): string {
+  const trimmed = trimGFPoly(coeffs);
+  if (trimmed.length === 1 && trimmed[0] === 0) return '0';
+  const terms: string[] = [];
+  for (let i = trimmed.length - 1; i >= 0; i--) {
+    if (trimmed[i] !== 0) {
+      if (i === 0) terms.push('1');
+      else if (i === 1) terms.push('x');
+      else terms.push(`x^{${i}}`);
+    }
+  }
+  return terms.length > 0 ? terms.join(' + ') : '0';
+}
+
+/**
+ * Returns the compact coefficient string (highest degree first) for a polynomial over GF(2).
+ * @param coeffs - Polynomial array where index = degree.
+ * @returns Coefficient string, e.g. "1011"
+ * @example
+ * toCoeffString([1, 1, 0, 1]) // returns "1011"
+ */
+export function toCoeffString(coeffs: number[]): string {
+  return trimGFPoly(coeffs).slice().reverse().join('');
 }
 
 /**

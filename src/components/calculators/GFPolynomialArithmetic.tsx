@@ -11,8 +11,10 @@ import {
   gfAdd,
   gfMul,
   gfDivide,
+  gfMod,
   parseGFPoly,
-  prettyPrint,
+  toLatex,
+  toCoeffString,
 } from '../../utils/numberTheory/gf';
 
 type Operation = 'add' | 'mul' | 'div';
@@ -23,9 +25,9 @@ const GFPolynomialArithmetic: React.FC = () => {
   const [mod, setMod] = useState('');
   const [op, setOp] = useState<Operation>('add');
   const [result, setResult] = useState<{
-    res?: string;
-    quotient?: string;
-    remainder?: string;
+    res?: number[];
+    quotient?: number[];
+    remainder?: number[];
   } | null>(null);
   const [error, setError] = useState('');
 
@@ -37,18 +39,17 @@ const GFPolynomialArithmetic: React.FC = () => {
       const polyB = parseGFPoly(b);
 
       if (op === 'add') {
-        const res = gfAdd(polyA, polyB);
-        setResult({ res: prettyPrint(res) });
+        const polyMod = mod ? parseGFPoly(mod) : undefined;
+        let res = gfAdd(polyA, polyB);
+        if (polyMod) res = gfMod(res, polyMod);
+        setResult({ res });
       } else if (op === 'mul') {
         const polyMod = mod ? parseGFPoly(mod) : undefined;
         const res = gfMul(polyA, polyB, polyMod);
-        setResult({ res: prettyPrint(res) });
+        setResult({ res });
       } else if (op === 'div') {
         const { quotient, remainder } = gfDivide(polyA, polyB);
-        setResult({
-          quotient: prettyPrint(quotient),
-          remainder: prettyPrint(remainder),
-        });
+        setResult({ quotient, remainder });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid input.');
@@ -86,8 +87,8 @@ const GFPolynomialArithmetic: React.FC = () => {
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="flex-1 min-w-50">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
           <label className="block text-md text-purple-300 mb-2">
             Operation
           </label>
@@ -105,22 +106,20 @@ const GFPolynomialArithmetic: React.FC = () => {
           </select>
         </div>
 
-        {op === 'mul' && (
-          <div className="flex-1 min-w-50">
-            <GFPolynomialInput
-              label={
-                <span>
-                  Modulus <MathText>P(x)</MathText> (optional)
-                </span>
-              }
-              value={mod}
-              onChange={(val) => {
-                setMod(val);
-                setResult(null);
-              }}
-              onEnter={compute}
-            />
-          </div>
+        {(op === 'add' || op === 'mul') && (
+          <GFPolynomialInput
+            label={
+              <span>
+                Modulus <MathText>P(x)</MathText> (optional)
+              </span>
+            }
+            value={mod}
+            onChange={(val) => {
+              setMod(val);
+              setResult(null);
+            }}
+            onEnter={compute}
+          />
         )}
       </div>
 
@@ -138,12 +137,27 @@ const GFPolynomialArithmetic: React.FC = () => {
       {result && (
         <div className="mt-6 space-y-4">
           {result.res !== undefined && (
-            <NumericOutput label="Result" value={result.res} />
+            <div>
+              <div className="mb-2 text-lg text-white text-center">
+                <MathText>{toLatex(result.res)}</MathText>
+              </div>
+              <NumericOutput label="Result" value={toCoeffString(result.res)} />
+            </div>
           )}
           {result.quotient !== undefined && (
             <div className="grid sm:grid-cols-2 gap-4">
-              <NumericOutput label="Quotient Q(x)" value={result.quotient} />
-              <NumericOutput label="Remainder R(x)" value={result.remainder!} />
+              <div>
+                <div className="mb-2 text-lg text-white text-center">
+                  <MathText>{toLatex(result.quotient)}</MathText>
+                </div>
+                <NumericOutput label="Quotient Q(x)" value={toCoeffString(result.quotient)} />
+              </div>
+              <div>
+                <div className="mb-2 text-lg text-white text-center">
+                  <MathText>{toLatex(result.remainder!)}</MathText>
+                </div>
+                <NumericOutput label="Remainder R(x)" value={toCoeffString(result.remainder!)} />
+              </div>
             </div>
           )}
         </div>

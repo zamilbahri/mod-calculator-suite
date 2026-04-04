@@ -10,7 +10,8 @@ import {
 import {
   gfInverse,
   parseGFPoly,
-  prettyPrint,
+  toLatex,
+  toCoeffString,
 } from '../../utils/numberTheory/gf';
 import type { EEAStepLog } from '../../utils/numberTheory/gf';
 
@@ -18,7 +19,7 @@ const GFPolynomialInverse: React.FC = () => {
   const [a, setA] = useState('');
   const [mod, setMod] = useState('');
   const [result, setResult] = useState<{
-    inverse: string;
+    inverse: number[];
     steps: EEAStepLog[];
   } | null>(null);
   const [error, setError] = useState('');
@@ -31,10 +32,7 @@ const GFPolynomialInverse: React.FC = () => {
       const polyMod = parseGFPoly(mod);
 
       const { inverse, steps } = gfInverse(polyA, polyMod);
-      setResult({
-        inverse: prettyPrint(inverse),
-        steps,
-      });
+      setResult({ inverse, steps });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid input.');
     }
@@ -87,14 +85,19 @@ const GFPolynomialInverse: React.FC = () => {
 
       {result && (
         <div className="mt-6 space-y-4">
-          <NumericOutput
-            label={
-              <span>
-                <MathText>{`A(x)^{-1} \\bmod P(x)`}</MathText>
-              </span>
-            }
-            value={result.inverse}
-          />
+          <div>
+              <div className="mb-2 text-lg text-white text-center">
+                <MathText>{toLatex(result.inverse)}</MathText>
+              </div>
+              <NumericOutput
+                label={
+                  <span>
+                    <MathText>{`A(x)^{-1} \\bmod P(x)`}</MathText>
+                  </span>
+                }
+                value={toCoeffString(result.inverse)}
+              />
+            </div>
 
           <div className="mt-6">
             <h4 className="text-md font-semibold text-purple-200 mb-3">

@@ -7,14 +7,14 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from '../shared/ui';
-import { gfGCD, parseGFPoly, prettyPrint } from '../../utils/numberTheory/gf';
+import { gfGCD, parseGFPoly, toLatex, toCoeffString } from '../../utils/numberTheory/gf';
 import type { StepLog } from '../../utils/numberTheory/gf';
 
 const GFPolynomialGCD: React.FC = () => {
   const [a, setA] = useState('');
   const [b, setB] = useState('');
   const [result, setResult] = useState<{
-    gcd: string;
+    gcd: number[];
     steps: StepLog[];
   } | null>(null);
   const [error, setError] = useState('');
@@ -27,10 +27,7 @@ const GFPolynomialGCD: React.FC = () => {
       const polyB = parseGFPoly(b);
 
       const { gcd, steps } = gfGCD(polyA, polyB);
-      setResult({
-        gcd: prettyPrint(gcd),
-        steps,
-      });
+      setResult({ gcd, steps });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invalid input.');
     }
@@ -79,7 +76,12 @@ const GFPolynomialGCD: React.FC = () => {
 
       {result && (
         <div className="mt-6 space-y-4">
-          <NumericOutput label="GCD Polynomial" value={result.gcd} />
+          <div>
+              <div className="mb-2 text-lg text-white text-center">
+                <MathText>{toLatex(result.gcd)}</MathText>
+              </div>
+              <NumericOutput label="GCD Polynomial" value={toCoeffString(result.gcd)} />
+            </div>
 
           <div className="mt-6">
             <h4 className="text-md font-semibold text-purple-200 mb-3">
