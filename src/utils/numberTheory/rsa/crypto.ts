@@ -352,7 +352,7 @@ export const encryptRsaMessage = ({
   blockSize,
   encoding,
 }: EncryptRsaMessageOptions): string[] => {
-  if (!isAsciiOnly(message)) {
+  if (encodingMode !== 'direct-integer' && !isAsciiOnly(message)) {
     throw new Error('Text to encrypt must contain ASCII characters only.');
   }
   if (e <= 1n || n <= 1n) {
@@ -364,6 +364,19 @@ export const encryptRsaMessage = ({
 
   const blocks: string[] = [];
   const modulusDigits = n.toString().length;
+
+  if (encodingMode === 'direct-integer') {
+    const trimmed = message.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      throw new Error('Direct Integer mode requires a non-negative integer as input.');
+    }
+    const m = BigInt(trimmed);
+    if (m >= n) {
+      throw new Error('Plaintext integer must be less than n.');
+    }
+    blocks.push(modPow(m, e, n).toString());
+    return blocks;
+  }
 
   if (encodingMode === 'pkcs1-v1_5') {
     const messageBytes = new TextEncoder().encode(message);
@@ -407,12 +420,12 @@ export const encryptRsaMessage = ({
     const xSymbol = encoding.charToValue.get(encoding.normalizeChar('X'));
     if (xSymbol === undefined) {
       throw new Error(
-        'Alphabet must contain "X" for Classroom RSA padding.',
+        'Alphabet must contain "X" for Fixed-Width Numeric Slicing padding.',
       );
     }
     if (xSymbol < 0n || xSymbol > 99n) {
       throw new Error(
-        'Classroom RSA requires symbol values in [0, 99].',
+        'Fixed-Width Numeric Slicing requires symbol values in [0, 99].',
       );
     }
 
@@ -420,7 +433,7 @@ export const encryptRsaMessage = ({
       .map((s) => {
         if (s < 0n || s > 99n) {
           throw new Error(
-            'Classroom RSA requires symbol values in [0, 99].',
+            'Fixed-Width Numeric Slicing requires symbol values in [0, 99].',
           );
         }
         return s.toString().padStart(2, '0');
@@ -479,6 +492,15 @@ export const decryptRsaMessage = ({
 
   const tokens = ciphertext.trim().split(/\s+/);
   let text = '';
+
+  if (encodingMode === 'direct-integer') {
+    if (tokens.length !== 1) {
+      throw new Error('Direct Integer mode expects exactly one ciphertext value.');
+    }
+    const c = parseBigIntStrict(tokens[0], 'ciphertext');
+    const m = modPow(c, d, n);
+    return m.toString();
+  }
 
   for (let i = 0; i < tokens.length; i += 1) {
     const c = parseBigIntStrict(tokens[i], 'ciphertext block');
