@@ -45,7 +45,7 @@ const CalculatorCard: React.FC<CalculatorCardProps> = ({
 
   return (
     <section
-      className={`mb-8 p-6 shadow-2xl rounded-xl border transition-colors ${borderClass} ${
+      className={`mb-8 p-4 shadow-2xl rounded-xl border transition-colors ${borderClass} ${
         !open ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-800'
       }`}
     >
