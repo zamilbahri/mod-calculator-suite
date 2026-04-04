@@ -11,7 +11,7 @@ import type { PrimeSizeType } from './numberTheory';
 export type RsaMode = 'encrypt' | 'decrypt';
 
 /** Text encoding strategy for RSA block packing and decoding. */
-export type RsaEncodingMode = 'fixed-width-numeric' | 'radix' | 'pkcs1-v1_5';
+export type RsaEncodingMode = 'fixed-width-numeric' | 'radix' | 'pkcs1-v1_5' | 'direct-integer';
 
 /** Alphabet source for non-PKCS text modes. */
 export type RsaAlphabetMode = 'ascii' | 'custom';
