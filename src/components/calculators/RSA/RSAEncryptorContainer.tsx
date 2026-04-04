@@ -88,9 +88,9 @@ const SHOW_KEY_PAIR_PEM_PANEL = false;
 const RSAEncryptorContainer: React.FC = () => {
   const [mode, setMode] = useState<RsaMode>('encrypt');
   const [encodingMode, setEncodingMode] =
-    useState<RsaEncodingMode>('pkcs1-v1_5');
+    useState<RsaEncodingMode>('direct-integer');
   const [ciphertextFormat, setCiphertextFormat] =
-    useState<RsaCiphertextFormat>('base64');
+    useState<RsaCiphertextFormat>('decimal');
   const [pInput, setPInput] = useState('');
   const [qInput, setQInput] = useState('');
   const [eInput, setEInput] = useState(DEFAULT_RSA_PUBLIC_EXPONENT);
@@ -220,6 +220,7 @@ const RSAEncryptorContainer: React.FC = () => {
 
   const defaultBlockSize = useMemo(() => {
     if (encodingMode === 'fixed-width-numeric') return 2;
+    if (encodingMode === 'pkcs1-v1_5' || encodingMode === 'direct-integer') return 1;
     try {
       const encoding = buildEncoding();
       const n = nInput.trim() === '' ? null : BigInt(nInput);
@@ -703,8 +704,8 @@ const RSAEncryptorContainer: React.FC = () => {
     setPrimeGenWorking(false);
 
     setMode('encrypt');
-    setEncodingMode('pkcs1-v1_5');
-    setCiphertextFormat('base64');
+    setEncodingMode('direct-integer');
+    setCiphertextFormat('decimal');
 
     setPInput('');
     setQInput('');
