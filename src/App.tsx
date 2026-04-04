@@ -83,6 +83,7 @@ const App: React.FC = () => {
                     <MathText className="text-purple-200">{`A(x) + B(x), \\; A(x) \\cdot B(x), \\; A(x) / B(x)`}</MathText>
                     <span>over</span>
                     <MathText className="text-purple-200">GF(2)</MathText>.
+                    <span>Only accepts polynomials with coefficients of 1 or 0.</span>
                   </span>
                 }
               >
@@ -96,6 +97,7 @@ const App: React.FC = () => {
                     <span>Compute</span>
                     <MathText className="text-purple-200">{`\\gcd(A(x), B(x))`}</MathText>
                     <span>using the Euclidean algorithm.</span>
+                    <span>Only accepts polynomials with coefficients of 1 or 0.</span>
                   </span>
                 }
               >
@@ -109,6 +111,7 @@ const App: React.FC = () => {
                     <span>Compute</span>
                     <MathText className="text-purple-200">{`A(x)^{-1} \\bmod P(x)`}</MathText>
                     <span>using the Extended Euclidean Algorithm.</span>
+                    <span>Only accepts polynomials with coefficients of 1 or 0.</span>
                   </span>
                 }
               >
