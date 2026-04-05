@@ -184,6 +184,24 @@ test('multiplyMatrixMod computes matrix-matrix and matrix-vector products', () =
   assert.deepEqual(multiplyMatrixMod(a, v, 11n), [7n, 1n]);
 });
 
+test('multiplyMatrixMod without modulus performs plain integer multiplication', () => {
+  const a = [
+    [1n, 2n],
+    [3n, 4n],
+  ];
+  const b = [
+    [5n, 6n],
+    [7n, 8n],
+  ];
+  const v = [9n, 10n];
+
+  assert.deepEqual(multiplyMatrixMod(a, b), [
+    [19n, 22n],
+    [43n, 50n],
+  ]);
+  assert.deepEqual(multiplyMatrixMod(a, v), [29n, 67n]);
+});
+
 test('multiplyMatrixMod validates dimensions and modulus', () => {
   assert.throws(
     () => multiplyMatrixMod([[1n, 2n]], [[1n, 2n]], 7n),
