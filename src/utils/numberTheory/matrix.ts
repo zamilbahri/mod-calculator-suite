@@ -384,46 +384,46 @@ export function inverseMatrixMod(
 }
 
 /**
- * Multiplies two matrices modulo `m`.
+ * Multiplies two matrices, optionally modulo `m`.
  *
  * @param {BigIntMatrix} left - Left matrix.
  * @param {BigIntMatrix} right - Right matrix.
- * @param {bigint} m - Modulus.
- * @returns {BigIntMatrix} Product matrix modulo `m`.
+ * @param {bigint} [m] - Modulus. If omitted, plain integer multiplication is performed.
+ * @returns {BigIntMatrix} Product matrix (modulo `m` if provided).
  */
 export function multiplyMatrixMod(
   left: BigIntMatrix,
   right: BigIntMatrix,
-  m: bigint,
+  m?: bigint,
 ): BigIntMatrix;
 /**
- * Multiplies a matrix by a vector modulo `m`.
+ * Multiplies a matrix by a vector, optionally modulo `m`.
  *
  * @param {BigIntMatrix} left - Left matrix.
  * @param {Vector} right - Right vector.
- * @param {bigint} m - Modulus.
- * @returns {Vector} Product vector modulo `m`.
+ * @param {bigint} [m] - Modulus. If omitted, plain integer multiplication is performed.
+ * @returns {Vector} Product vector (modulo `m` if provided).
  */
 export function multiplyMatrixMod(
   left: BigIntMatrix,
   right: Vector,
-  m: bigint,
+  m?: bigint,
 ): Vector;
 /**
- * Multiplies matrix-matrix or matrix-vector operands modulo `m`.
+ * Multiplies matrix-matrix or matrix-vector operands, optionally modulo `m`.
  *
  * @param {BigIntMatrix} left - Left matrix.
  * @param {BigIntMatrix | Vector} right - Right operand.
- * @param {bigint} m - Modulus.
- * @returns {BigIntMatrix | Vector} Product modulo `m`.
+ * @param {bigint} [m] - Modulus. If omitted, plain integer multiplication is performed.
+ * @returns {BigIntMatrix | Vector} Product (modulo `m` if provided).
  * @throws {Error} If modulus/shape/dimensions are invalid.
  */
 export function multiplyMatrixMod(
   left: BigIntMatrix,
   right: BigIntMatrix | Vector,
-  m: bigint,
+  m?: bigint,
 ): BigIntMatrix | Vector {
-  assertValidModulus(m);
+  if (m !== undefined) assertValidModulus(m);
   assertRectangular(left);
 
   const leftRows = left.length;
@@ -453,7 +453,7 @@ export function multiplyMatrixMod(
         for (let k = 0; k < leftCols; k++) {
           acc += left[r][k] * rightMatrix[k][c];
         }
-        out[r][c] = modNormalize(acc, m);
+        out[r][c] = m !== undefined ? modNormalize(acc, m) : acc;
       }
     }
 
@@ -473,7 +473,7 @@ export function multiplyMatrixMod(
     for (let k = 0; k < leftCols; k++) {
       acc += left[r][k] * rightVector[k];
     }
-    out[r] = modNormalize(acc, m);
+    out[r] = m !== undefined ? modNormalize(acc, m) : acc;
   }
   return out;
 }

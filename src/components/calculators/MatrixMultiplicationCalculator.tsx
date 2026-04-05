@@ -54,8 +54,12 @@ const MatrixMultiplicationCalculator: React.FC = () => {
       setWorking(true);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      const m = parseBigIntStrict(modulus, 'm');
-      if (m < 2n) throw new Error('m must be at least 2.');
+      const mStr = modulus.trim();
+      let m: bigint | undefined;
+      if (mStr !== '') {
+        m = parseBigIntStrict(mStr, 'm');
+        if (m < 2n) throw new Error('m must be at least 2.');
+      }
 
       const A = parseMatrixInput(matrixA, 'A');
       const B = parseMatrixInput(matrixB, 'B');
@@ -79,8 +83,9 @@ const MatrixMultiplicationCalculator: React.FC = () => {
   };
 
   const resultLabel = useMemo(() => {
-    const mLabel = modulus.trim() === '' ? 'm' : modulus.trim();
-    return <MathText>{`A \\cdot B \\bmod ${mLabel}`}</MathText>;
+    const mStr = modulus.trim();
+    if (mStr === '') return <MathText>{`A \\cdot B`}</MathText>;
+    return <MathText>{`A \\cdot B \\bmod ${mStr}`}</MathText>;
   }, [modulus]);
 
   return (
@@ -101,7 +106,7 @@ const MatrixMultiplicationCalculator: React.FC = () => {
           }}
           minRows={1}
           rows={1}
-          placeholder="modulus >= 2"
+          placeholder="modulus >= 2. Leave empty for normal multiplication."
         />
       </div>
 
